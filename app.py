@@ -14,47 +14,102 @@ st.set_page_config(page_title="TRIZ 영업실 업무 프로그램", page_icon="�
 st.markdown('''
 <style>
 html, body, [class*="css"]{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;}
-.stApp{background:#f6f8fb}.block-container{padding-top:1.4rem;max-width:1380px}section[data-testid="stSidebar"]{background:#fff;border-right:1px solid #e5e7eb}.main-title{font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#111827}.subtle{color:#64748b;font-size:.94rem;margin-bottom:1.2rem}[data-testid="stMetric"]{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:18px;box-shadow:0 12px 28px rgba(15,23,42,.055);height:118px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;}[data-testid="stMetricValue"]{font-size:1.7rem;font-weight:900;letter-spacing:-.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}[data-testid="stMetricLabel"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}[data-testid="stMetricDelta"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.card{background:#fff;border:1px solid #e5e7eb;border-radius:22px;padding:20px;box-shadow:0 12px 28px rgba(15,23,42,.055);margin-bottom:14px}.dark-card{background:linear-gradient(135deg,#111827,#334155);color:white;border-radius:22px;padding:20px;box-shadow:0 12px 28px rgba(15,23,42,.12);margin-bottom:14px}.dark-card span{color:#cbd5e1}.section-title{font-size:1.45rem;font-weight:900;letter-spacing:-.04em;margin:1rem 0 .35rem}.help{color:#64748b;font-size:.9rem;margin-bottom:.8rem}.chip{display:inline-block;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800;margin-right:6px;margin-bottom:6px;background:#f8fafc;border:1px solid #e5e7eb;color:#475569}.chip.active{background:#111827;color:white;border-color:#111827}.status-green{display:inline-block;padding:5px 8px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11px;font-weight:900}.calendar-grid{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:12px}.day-card{min-height:165px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;padding:14px}.day-top{display:flex;justify-content:space-between;align-items:center;color:#64748b;font-size:12px;margin-bottom:10px}.day-date{color:#111827;font-weight:900;font-size:17px}.schedule-item{border-radius:14px;padding:10px;background:#eff6ff;color:#1d4ed8;font-size:12px;line-height:1.38;font-weight:800;margin-top:8px}.schedule-purple{background:#f5f3ff;color:#6d28d9}.schedule-cancel{background:#fff1f2;color:#be123c;text-decoration:line-through;border:1px solid #ffe4e6}.step-box{background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;padding:16px;height:100%}.step-box b{display:block;font-size:14px;margin-bottom:5px}.step-box span{color:#64748b;font-size:12px}.table-like{border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;background:white}.row{display:grid;grid-template-columns:1.2fr 1fr repeat(4,.8fr);border-bottom:1px solid #eef2f7}.row:last-child{border-bottom:none}.cell{padding:12px 13px;font-size:13px;border-right:1px solid #eef2f7}.cell:last-child{border-right:none}.head .cell{background:#f8fafc;color:#475569;font-weight:900}.group-cell{background:#ecfdf5;color:#047857;font-weight:900;display:flex;align-items:center}.sum .cell{background:#eff6ff;color:#1e40af;font-weight:900}.center{text-align:center}.bar-bg{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,#2563eb,#7c3aed);border-radius:999px}.stButton button,.stDownloadButton button{border-radius:13px;font-weight:800;border:1px solid #111827;background:#111827;color:white}@media(max-width:1000px){.calendar-grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}.cell{border-right:none}}
+.stApp{background:#f4f6f9}.block-container{padding-top:1.4rem;max-width:1380px}
+section[data-testid="stSidebar"]{background:#fff;border-right:1px solid #e5e7eb}
+.main-title{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;color:#0f172a}
+.subtle{color:#64748b;font-size:.92rem;margin-bottom:1.2rem}
+[data-testid="stMetric"]{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px 18px;box-shadow:0 1px 2px rgba(15,23,42,.04);height:112px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;}
+[data-testid="stMetricValue"]{font-size:1.55rem;font-weight:800;letter-spacing:-.03em;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+[data-testid="stMetricLabel"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;color:#64748b}
+[data-testid="stMetricDelta"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;box-shadow:0 1px 2px rgba(15,23,42,.04);margin-bottom:14px}
+.dark-card{background:#0f172a;color:white;border-radius:10px;padding:18px 20px;box-shadow:0 1px 2px rgba(15,23,42,.08);margin-bottom:14px}
+.dark-card span{color:#94a3b8}
+.section-title{font-size:1.28rem;font-weight:800;letter-spacing:-.02em;color:#0f172a;margin:1rem 0 .35rem}
+.help{color:#64748b;font-size:.88rem;margin-bottom:.8rem}
+.chip{display:inline-block;padding:6px 11px;border-radius:6px;font-size:11.5px;font-weight:700;margin-right:6px;margin-bottom:6px;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569}
+.chip.active{background:#0f172a;color:white;border-color:#0f172a}
+.status-green{display:inline-block;padding:4px 9px;border-radius:6px;background:#dcfce7;color:#166534;font-size:11px;font-weight:800}
+.calendar-grid{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px}
+.day-card{min-height:165px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px}
+.day-top{display:flex;justify-content:space-between;align-items:center;color:#64748b;font-size:12px;margin-bottom:10px}
+.day-date{color:#0f172a;font-weight:800;font-size:16px}
+.schedule-item{border-radius:7px;padding:9px 10px;background:#eff6ff;color:#1d4ed8;font-size:12px;line-height:1.38;font-weight:700;margin-top:7px;border-left:3px solid #2563eb}
+.schedule-purple{background:#f5f3ff;color:#6d28d9;border-left-color:#7c3aed}
+.schedule-cancel{background:#f8fafc;color:#94a3b8;text-decoration:line-through;border-left-color:#cbd5e1}
+.step-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;height:100%}
+.step-box b{display:block;font-size:14px;margin-bottom:5px;color:#0f172a}
+.step-box span{color:#64748b;font-size:12px}
+.table-like{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:white}
+.row{display:grid;grid-template-columns:1.2fr 1fr repeat(4,.8fr);border-bottom:1px solid #eef2f7}
+.row:last-child{border-bottom:none}
+.cell{padding:11px 13px;font-size:13px;border-right:1px solid #eef2f7}
+.cell:last-child{border-right:none}
+.head .cell{background:#f8fafc;color:#475569;font-weight:800}
+.group-cell{background:#f0fdf4;color:#166534;font-weight:800;display:flex;align-items:center}
+.sum .cell{background:#eff6ff;color:#1e40af;font-weight:800}
+.center{text-align:center}
+.stButton button,.stDownloadButton button{border-radius:7px;font-weight:700;border:1px solid #0f172a;background:#0f172a;color:white}
+.stButton button:hover,.stDownloadButton button:hover{background:#1e293b;border-color:#1e293b}
+div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[data-baseweb="select"]>div{border-radius:7px !important}
+.deal-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
+.deal-table th{background:#f8fafc;color:#475569;font-weight:800;padding:10px 8px;border:1px solid #eef2f7;text-align:center;white-space:nowrap}
+.deal-table td{padding:9px 10px;border:1px solid #eef2f7}
+.deal-table td.center{text-align:center;font-weight:700}
+.deal-table td.group-cell{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;vertical-align:middle}
+.deal-table tr.total td{background:#eff6ff;color:#1e40af;font-weight:800}
+.month-summary-table{font-size:15px;background:#fff}
+.month-summary-table th{background:#f8fafc;color:#475569;font-weight:800;padding:13px 12px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:13.5px}
+.month-summary-table td{padding:13px 12px;border:1px solid #eef2f7;font-size:15px}
+.month-summary-table td.center{text-align:center;font-weight:700}
+.rank-table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}
+.rank-table th{background:#f8fafc;color:#475569;font-weight:800;padding:11px 12px;border:1px solid #eef2f7;text-align:left}
+.rank-table th.num{text-align:right}
+.rank-table td{padding:12px;border:1px solid #eef2f7;vertical-align:middle}
+.rank-table td.num{text-align:right;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
+.rank-table td.rank-badge{width:34px;text-align:center;color:#94a3b8;font-weight:800;font-size:12.5px}
+.gantt-wrap{overflow-x:auto;}
+.gantt-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:5px 8px;align-items:center;}
+.gantt-day-head{text-align:center;padding:8px 0;font-weight:800;color:#64748b;font-size:12.5px;}
+.gantt-day-head .num{display:inline-block;width:30px;height:30px;line-height:30px;border-radius:50%;color:#0f172a;font-size:14px;margin-top:2px;}
+.gantt-day-head .num.today{background:#0f172a;color:white;}
+.gantt-bar{background:#2563eb;color:white;font-size:11.5px;font-weight:700;padding:7px 10px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gantt-bar.cancelled{background:#f1f5f9;color:#94a3b8;text-decoration:line-through;}
 .field-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 16px;margin-top:12px}
-.field-item{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px 13px}
-.field-item b{display:block;font-size:11px;color:#64748b;font-weight:800;margin-bottom:3px}
-.field-item span{font-size:13.5px;color:#111827;font-weight:700;white-space:pre-line}
+.field-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 13px}
+.field-item b{display:block;font-size:11px;color:#64748b;font-weight:700;margin-bottom:3px}
+.field-item span{font-size:13.5px;color:#0f172a;font-weight:600;white-space:pre-line}
 .field-item.full{grid-column:1/-1}
 .tag-vendor{background:#eff6ff !important;color:#1d4ed8 !important;border-color:#bfdbfe !important}
 .tag-seller{background:#f5f3ff !important;color:#6d28d9 !important;border-color:#ddd6fe !important}
-.checklist-title{font-size:16px;font-weight:900;margin-bottom:2px}
-.deal-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
-.deal-table th{background:#f8fafc;color:#475569;font-weight:900;padding:10px 8px;border:1px solid #eef2f7;text-align:center;white-space:nowrap}
-.deal-table td{padding:9px 10px;border:1px solid #eef2f7}
-.deal-table td.center{text-align:center;font-weight:800}
-.deal-table td.group-cell{background:#ecfdf5;color:#047857;font-weight:900;text-align:center;vertical-align:middle}
-.deal-table tr.total td{background:#eff6ff;color:#1e40af;font-weight:900}
-.month-summary-table{font-size:16px;background:#fff}
-.month-summary-table th{background:#f8fafc;color:#475569;font-weight:900;padding:14px 12px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:15px}
-.month-summary-table td{padding:14px 12px;border:1px solid #eef2f7;font-size:16px}
-.month-summary-table td.center{text-align:center;font-weight:800}
-@media(max-width:1000px){.field-grid{grid-template-columns:1fr}}
-.nav-group{font-size:11px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin:22px 4px 6px;display:flex;align-items:center;gap:6px}
+.checklist-title{font-size:16px;font-weight:800;margin-bottom:2px}
+.nav-group{font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin:20px 4px 6px;display:flex;align-items:center;gap:6px}
 .nav-group:first-of-type{margin-top:4px}
 .nav-group::after{content:'';flex:1;height:1px;background:#eef2f7}
 section[data-testid="stSidebar"] div[role="radiogroup"]{gap:1px}
-section[data-testid="stSidebar"] div[role="radiogroup"] label{padding:9px 12px;border-radius:12px;transition:background .12s ease;margin-bottom:1px}
+section[data-testid="stSidebar"] div[role="radiogroup"] label{padding:8px 11px;border-radius:7px;transition:background .12s ease;margin-bottom:1px}
 section[data-testid="stSidebar"] div[role="radiogroup"] label:hover{background:#f1f5f9}
-section[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"]{background:#111827}
-.breadcrumb{color:#94a3b8;font-size:12.5px;font-weight:800;letter-spacing:.02em;margin-bottom:2px}
+.breadcrumb{color:#94a3b8;font-size:12px;font-weight:700;letter-spacing:.01em;margin-bottom:2px}
 .breadcrumb b{color:#334155}
-[data-testid="stAppViewContainer"]{background:linear-gradient(180deg,#f8fafc 0%,#f6f8fb 320px)}
 .sidebar-badge{display:flex;align-items:center;gap:10px;padding:2px 0 14px}
-.sidebar-badge .dot{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.sidebar-badge .txt b{display:block;font-size:14.5px;font-weight:900;letter-spacing:-.02em;color:#111827;line-height:1.25}
-.sidebar-badge .txt span{font-size:11px;color:#94a3b8;font-weight:700}
-.gantt-wrap{overflow-x:auto;}
-.gantt-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:5px 8px;align-items:center;}
-.gantt-day-head{text-align:center;padding:8px 0;font-weight:900;color:#64748b;font-size:13px;}
-.gantt-day-head .num{display:inline-block;width:32px;height:32px;line-height:32px;border-radius:50%;color:#111827;font-size:15px;margin-top:2px;}
-.gantt-day-head .num.today{background:#2563eb;color:white;}
-.gantt-bar{background:linear-gradient(90deg,#2563eb,#7c3aed);color:white;font-size:12px;font-weight:800;padding:7px 10px;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 10px rgba(37,99,235,.18);}
-.gantt-bar.cancelled{background:#fecdd3;color:#9f1239;text-decoration:line-through;box-shadow:none;}
+.sidebar-badge .dot{width:32px;height:32px;border-radius:8px;background:#0f172a;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.sidebar-badge .txt b{display:block;font-size:14px;font-weight:800;letter-spacing:-.02em;color:#0f172a;line-height:1.25}
+.sidebar-badge .txt span{font-size:10.5px;color:#94a3b8;font-weight:700}
+@media(max-width:1000px){
+  .calendar-grid{grid-template-columns:1fr}
+  .row{grid-template-columns:1fr}
+  .cell{border-right:none}
+  .field-grid{grid-template-columns:1fr}
+  .block-container{padding-left:.9rem;padding-right:.9rem}
+  .main-title{font-size:1.32rem}
+  .section-title{font-size:1.08rem}
+  [data-testid="stMetric"]{height:auto;min-height:96px;padding:13px 14px}
+  [data-testid="stMetricValue"]{font-size:1.28rem}
+  .gantt-grid{grid-template-columns:repeat(7,minmax(72px,1fr));font-size:11px}
+  .gantt-bar{padding:5px 6px;font-size:10px}
+  .deal-table,.month-summary-table,.rank-table{font-size:12px}
+  .month-summary-table td,.month-summary-table th{padding:9px 8px;font-size:12.5px}
+}
 </style>
 ''', unsafe_allow_html=True)
 
@@ -767,7 +822,7 @@ manager_df['달성률']=(manager_df['매출']/manager_df['KPI']*100).round(1)
 with st.sidebar:
     st.markdown('<div class="sidebar-badge"><div class="dot">📊</div><div class="txt"><b>TRIZ 영업실</b><span>업무 프로그램</span></div></div>',unsafe_allow_html=True)
 
-    major=st.radio('대분류',['🏠 메인 대시보드','🤖 자동 프로그램'],label_visibility='collapsed',key='nav_major')
+    major=st.radio('대분류',['🏠 메인 대시보드','⚙️ 자동 프로그램'],label_visibility='collapsed',key='nav_major')
 
     if major=='🏠 메인 대시보드':
         st.markdown('<div class="nav-group">메인 대시보드</div>',unsafe_allow_html=True)
@@ -778,7 +833,7 @@ with st.sidebar:
         page=st.radio('소분류',['💰 매출 집계','🎁 이벤트 추첨','📢 공구 알람'],label_visibility='collapsed',key='nav_minor_auto')
 
     st.markdown('---')
-    st.caption('※ 내부 공유용 프로그램입니다. 일부 업로드/버튼은 화면 시연용입니다.')
+    st.caption('※ 내부 공유용 프로그램입니다.')
 
 _breadcrumb_sub='대시보드' if page=='🏠 메인 대시보드' else page.split(' ',1)[1]
 st.markdown(f'<div class="breadcrumb">{major.split(" ",1)[1]} <span style="color:#cbd5e1;">›</span> <b>{_breadcrumb_sub}</b></div>',unsafe_allow_html=True)
@@ -973,12 +1028,14 @@ elif page=='👩 담당자별 매출':
     st.markdown('<div class="section-title">👩 담당자별 매출 집계</div>',unsafe_allow_html=True)
     board_data=filter_up_to_current_month(load_all_dashboard_data()[0])
 
+    def render_rank_table(rows):
+        body=''.join(f'<tr><td class="rank-badge">{i+1}</td><td><b>{r["담당자"]}</b></td><td class="num">{money(r["매출"])}</td><td class="num">{money(r["GP"])}</td></tr>' for i,r in enumerate(rows))
+        return f'<div class="card" style="padding:0;overflow-x:auto;"><table class="rank-table"><thead><tr><th></th><th>담당자</th><th class="num">매출</th><th class="num">GP</th></tr></thead><tbody>{body}</tbody></table></div>'
+
     if not board_data:
         st.info('공구현황판이 아직 없습니다. "🏠 메인 대시보드"에서 업로드하면 실제 담당자별 데이터로 전환됩니다. (지금은 샘플 수치)')
-        st.markdown('<div class="card">',unsafe_allow_html=True)
-        for _,row in manager_df.iterrows():
-            st.markdown(f'<div style="display:grid;grid-template-columns:140px 1fr 180px;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid #eef2f7;"><div><b>{row["담당자"]}</b><br><span style="color:#64748b;font-size:12px;">공구 {int(row["공구수"])}건</span></div><div><div class="bar-bg"><div class="bar-fill" style="width:{min(row["달성률"],100)}%;"></div></div></div><div style="text-align:right;"><b>{money(int(row["매출"]))}</b><br><span style="color:#64748b;font-size:12px;">GP {money(int(row["GP"]))}</span></div></div>',unsafe_allow_html=True)
-        st.markdown('</div>',unsafe_allow_html=True)
+        rows=[{'담당자':r['담당자'],'매출':r['매출'],'GP':r['GP']} for _,r in manager_df.sort_values('매출',ascending=False).iterrows()]
+        st.markdown(render_rank_table(rows),unsafe_allow_html=True)
     else:
         years=sorted({y for (y,m) in board_data})
         cur_year=years[-1] if years else date.today().year
@@ -986,13 +1043,8 @@ elif page=='👩 담당자별 매출':
         totals=aggregate_by_manager(board_data)
         real_df=pd.DataFrame([{'담당자':m,'매출':v['매출'],'GP':v['GP']} for m,v in totals.items()])
         real_df=real_df.sort_values('매출',ascending=False).reset_index(drop=True)
-        max_rev=real_df['매출'].max() if len(real_df) else 1
 
-        st.markdown('<div class="card">',unsafe_allow_html=True)
-        for _,row in real_df.iterrows():
-            bar_pct=(row['매출']/max_rev*100) if max_rev else 0
-            st.markdown(f'<div style="display:grid;grid-template-columns:140px 1fr 180px;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid #eef2f7;"><div><b>{row["담당자"]}</b></div><div><div class="bar-bg"><div class="bar-fill" style="width:{bar_pct:.1f}%;"></div></div></div><div style="text-align:right;"><b>매출 {money(row["매출"])}</b><br><b>GP {money(row["GP"])}</b></div></div>',unsafe_allow_html=True)
-        st.markdown('</div>',unsafe_allow_html=True)
+        st.markdown(render_rank_table(real_df.to_dict('records')),unsafe_allow_html=True)
 
         st.markdown('<div class="section-title" style="font-size:1.1rem;">📆 담당자별(월별) 누적 조회</div>',unsafe_allow_html=True)
         managers=real_df['담당자'].tolist()
@@ -1009,6 +1061,8 @@ elif page=='👩 담당자별 매출':
                 cum={m:cum.get(m,{'매출':0,'GP':0}) for m in managers}
             cum_df=pd.DataFrame([{'담당자':m,'누적 매출':money(v['매출']),'누적 GP':money(v['GP'])} for m,v in cum.items()])
             st.dataframe(cum_df,use_container_width=True,hide_index=True)
+
+
 
 elif page=='🔍 히스토리 검색':
     st.markdown('<div class="section-title">🔍 셀러/상품 히스토리 검색</div>',unsafe_allow_html=True)
