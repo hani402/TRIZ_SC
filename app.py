@@ -257,10 +257,14 @@ def build_masked_list(file_obj):
 # ── 대시보드 데이터 파이프라인 (공구현황판 / 결산자료 폴백 구조) ──────────────
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 BOARD_PATH = os.path.join(DATA_DIR, 'gonggu_board.xlsx')
+# archive_data/는 .gitignore에서 제외하지 않는 폴더 — 25년처럼 "한 번만 넣고 계속 유지"할 파일을 GitHub에 커밋해서 보관
+ARCHIVE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'archive_data')
+ARCHIVE_BOARD_PATH = os.path.join(ARCHIVE_DIR, 'gonggu_board_2025.xlsx')
 SETTLEMENT_DIR = os.path.join(DATA_DIR, 'settlements')
 
 def ensure_data_dirs():
     os.makedirs(SETTLEMENT_DIR, exist_ok=True)
+    os.makedirs(ARCHIVE_DIR, exist_ok=True)
 
 def header_key(v):
     """헤더 셀 값에서 줄바꿈/공백 제거 후 비교용 키로 변환."""
@@ -380,6 +384,11 @@ def save_board_upload(uploaded_file):
     with open(BOARD_PATH, 'wb') as f:
         f.write(uploaded_file.getbuffer())
 
+def save_archive_board_upload(uploaded_file):
+    ensure_data_dirs()
+    with open(ARCHIVE_BOARD_PATH, 'wb') as f:
+        f.write(uploaded_file.getbuffer())
+
 def save_settlement_upload(uploaded_file):
     ensure_data_dirs()
     raw = uploaded_file.getbuffer()
@@ -438,13 +447,20 @@ def filter_up_to_current_month(data_by_ym):
     cur = (today.year, today.month)
     return {ym: v for ym, v in data_by_ym.items() if ym <= cur}
 
-def to_date_value(v):
-    """엑셀 셀 값(datetime 또는 serial number)을 date로 변환."""
+def to_date_value(v, year=None):
+    """엑셀 셀 값(datetime, serial number, 또는 '06/30' 같은 텍스트 날짜)을 date로 변환.
+    텍스트 날짜는 연도 정보가 없어서 year 인자(보통 해당 시트의 연도)로 보완한다."""
     if isinstance(v, datetime): return v.date()
     if isinstance(v, date): return v
     if isinstance(v, (int, float)):
         try: return from_excel(v).date()
         except Exception: return None
+    if isinstance(v, str) and year:
+        m = re.match(r'^(\d{1,2})[./](\d{1,2})$', v.strip())
+        if m:
+            mm, dd = int(m.group(1)), int(m.group(2))
+            try: return date(year, mm, dd)
+            except ValueError: return None
     return None
 
 def format_deal_name(seller, product):
@@ -490,8 +506,8 @@ def get_week_deal_list(board_path, year, month, week_start, week_end):
     confirmed, cancelled = [], []
     for r in range(header_row + 1, ws.max_row + 1):
         seller = ws.cell(row=r, column=seller_col).value if seller_col else None
-        start_d = to_date_value(ws.cell(row=r, column=3).value)  # C열=시작일
-        end_d = to_date_value(ws.cell(row=r, column=5).value)    # E열=마감일
+        start_d = to_date_value(ws.cell(row=r, column=3).value, year)  # C열=시작일
+        end_d = to_date_value(ws.cell(row=r, column=5).value, year)    # E열=마감일
         if start_d is None or not (week_start <= start_d <= week_end): continue
         product = ws.cell(row=r, column=product_col).value if product_col else None
         date_label = f'{start_d.month}/{start_d.day}' if (not end_d or end_d == start_d) else f'{start_d.month}/{start_d.day}-{end_d.month}/{end_d.day}'
@@ -546,8 +562,8 @@ def parse_board_deals(board_path, year, month):
     deals = []
     for r in range(header_row + 1, ws.max_row + 1):
         seller = ws.cell(row=r, column=seller_col).value if seller_col else None
-        start_d = to_date_value(ws.cell(row=r, column=3).value)
-        end_d = to_date_value(ws.cell(row=r, column=5).value)
+        start_d = to_date_value(ws.cell(row=r, column=3).value, year)
+        end_d = to_date_value(ws.cell(row=r, column=5).value, year)
         is_cancelled = ws.row_dimensions[r].hidden
         if start_d is None or (not seller and not is_cancelled): continue
         product = ws.cell(row=r, column=product_col).value if product_col else None
@@ -596,8 +612,8 @@ def parse_board_deals_all(board_path):
         manager_col, rev_col, gp_col = col_map.get('영업담당자'), col_map.get('매출'), col_map.get('GP')
         for r in range(header_row + 1, ws.max_row + 1):
             seller = ws.cell(row=r, column=seller_col).value if seller_col else None
-            start_d = to_date_value(ws.cell(row=r, column=3).value)
-            end_d = to_date_value(ws.cell(row=r, column=5).value)
+            start_d = to_date_value(ws.cell(row=r, column=3).value, year)
+            end_d = to_date_value(ws.cell(row=r, column=5).value, year)
             is_cancelled = ws.row_dimensions[r].hidden
             if start_d is None or (not seller and not is_cancelled): continue
             product = ws.cell(row=r, column=product_col).value if product_col else None
@@ -973,15 +989,26 @@ elif page=='🔍 히스토리 검색':
     st.markdown('<div class="section-title">🔍 셀러/상품 히스토리 검색</div>',unsafe_allow_html=True)
     st.markdown('<div class="help">공구현황판에 있는 모든 연/월 시트(25년·26년 등)를 통틀어 검색합니다. 셀러명 또는 상품명 일부만 입력해도 검색됩니다.</div>',unsafe_allow_html=True)
 
-    if not os.path.exists(BOARD_PATH):
-        st.info('공구현황판이 아직 없습니다. "🏠 메인 대시보드"에서 업로드해주세요.')
+    with st.expander('📁 과거 연도 공구현황판(아카이브) 업로드 — 한 번만 넣어두면 계속 검색에 포함됩니다',expanded=False):
+        st.caption('※ 매일 바뀌는 최신 공구현황판과는 별도로 저장돼요. 25년처럼 더 이상 안 바뀌는 과거 자료를 여기에 올려주세요.')
+        archive_up=st.file_uploader('과거 공구현황판 업로드 (.xlsx)',type=['xlsx'],key='archive_upload')
+        if archive_up is not None:
+            save_archive_board_upload(archive_up)
+            st.success('아카이브 저장 완료')
+
+    board_exists=os.path.exists(BOARD_PATH)
+    archive_exists=os.path.exists(ARCHIVE_BOARD_PATH)
+    if not board_exists and not archive_exists:
+        st.info('공구현황판이 아직 없습니다. "🏠 메인 대시보드"에서 업로드하거나, 위에서 과거 아카이브를 업로드해주세요.')
     else:
         s1,s2=st.columns(2)
         with s1: seller_q=st.text_input('셀러명 검색',placeholder='예: 초이끄')
         with s2: product_q=st.text_input('상품명 검색',placeholder='예: 프레센티아')
 
         if seller_q or product_q:
-            all_deals=parse_board_deals_all(BOARD_PATH)
+            all_deals=[]
+            if board_exists: all_deals+=parse_board_deals_all(BOARD_PATH)
+            if archive_exists: all_deals+=parse_board_deals_all(ARCHIVE_BOARD_PATH)
             results=search_deal_history(all_deals,seller_q,product_q)
             if not results:
                 st.warning('검색 결과가 없습니다.')
