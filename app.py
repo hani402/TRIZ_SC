@@ -68,6 +68,9 @@ div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[da
 .rank-table td{padding:12px;border:1px solid #eef2f7;vertical-align:middle}
 .rank-table td.num{text-align:right;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
 .rank-table td.rank-badge{width:34px;text-align:center;color:#94a3b8;font-weight:800;font-size:12.5px}
+.rank-table td.bar-cell{width:34%}
+.rank-bar-bg{height:8px;background:#eef2f7;border-radius:4px;overflow:hidden}
+.rank-bar-fill{height:100%;background:#2563eb;border-radius:4px}
 .gantt-wrap{overflow-x:auto;}
 .gantt-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:5px 8px;align-items:center;}
 .gantt-day-head{text-align:center;padding:8px 0;font-weight:800;color:#64748b;font-size:12.5px;}
@@ -1029,8 +1032,12 @@ elif page=='👩 담당자별 매출':
     board_data=filter_up_to_current_month(load_all_dashboard_data()[0])
 
     def render_rank_table(rows):
-        body=''.join(f'<tr><td class="rank-badge">{i+1}</td><td><b>{r["담당자"]}</b></td><td class="num">{money(r["매출"])}</td><td class="num">{money(r["GP"])}</td></tr>' for i,r in enumerate(rows))
-        return f'<div class="card" style="padding:0;overflow-x:auto;"><table class="rank-table"><thead><tr><th></th><th>담당자</th><th class="num">매출</th><th class="num">GP</th></tr></thead><tbody>{body}</tbody></table></div>'
+        max_rev=max((r['매출'] for r in rows), default=0) or 1
+        body=''
+        for i,r in enumerate(rows):
+            bar_pct=(r['매출']/max_rev*100) if max_rev else 0
+            body+=f'<tr><td class="rank-badge">{i+1}</td><td><b>{r["담당자"]}</b></td><td class="bar-cell"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:{bar_pct:.1f}%;"></div></div></td><td class="num">{money(r["매출"])}</td><td class="num">{money(r["GP"])}</td></tr>'
+        return f'<div class="card" style="padding:0;overflow-x:auto;"><table class="rank-table"><thead><tr><th></th><th>담당자</th><th></th><th class="num">매출</th><th class="num">GP</th></tr></thead><tbody>{body}</tbody></table></div>'
 
     if not board_data:
         st.info('공구현황판이 아직 없습니다. "🏠 메인 대시보드"에서 업로드하면 실제 담당자별 데이터로 전환됩니다. (지금은 샘플 수치)')
