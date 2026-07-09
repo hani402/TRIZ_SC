@@ -936,11 +936,11 @@ elif page=='👩 담당자별 매출':
         st.markdown('<div class="card">',unsafe_allow_html=True)
         for _,row in real_df.iterrows():
             bar_pct=(row['매출']/max_rev*100) if max_rev else 0
-            st.markdown(f'<div style="display:grid;grid-template-columns:140px 1fr 180px;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid #eef2f7;"><div><b>{row["담당자"]}</b></div><div><div class="bar-bg"><div class="bar-fill" style="width:{bar_pct:.1f}%;"></div></div></div><div style="text-align:right;"><b>{cur_year}년 누적 매출<br>{money(row["매출"])}</b><br><span style="color:#64748b;font-size:12px;">누적 GP {money(row["GP"])}</span></div></div>',unsafe_allow_html=True)
+            st.markdown(f'<div style="display:grid;grid-template-columns:140px 1fr 180px;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid #eef2f7;"><div><b>{row["담당자"]}</b></div><div><div class="bar-bg"><div class="bar-fill" style="width:{bar_pct:.1f}%;"></div></div></div><div style="text-align:right;"><b>매출 {money(row["매출"])}</b><br><b>GP {money(row["GP"])}</b></div></div>',unsafe_allow_html=True)
         st.markdown('</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="section-title" style="font-size:1.1rem;">📆 담당자·월별 누적 조회</div>',unsafe_allow_html=True)
-        managers=sorted({mgr for (y,m),d in board_data.items() for mgr in d['by_manager']})
+        st.markdown('<div class="section-title" style="font-size:1.1rem;">📆 담당자별(월별) 누적 조회</div>',unsafe_allow_html=True)
+        managers=real_df['담당자'].tolist()
         months_avail=sorted({m for (y,m) in board_data if y==cur_year})
         sel1,sel2=st.columns(2)
         with sel1: manager_sel=st.selectbox('담당자',['전체']+managers)
@@ -950,6 +950,8 @@ elif page=='👩 담당자별 매출':
             cum=cumulative_by_manager_upto_month(board_data,cur_year,month_sel)
             if manager_sel!='전체':
                 cum={manager_sel:cum.get(manager_sel,{'매출':0,'GP':0})}
+            else:
+                cum={m:cum.get(m,{'매출':0,'GP':0}) for m in managers}
             cum_df=pd.DataFrame([{'담당자':m,'누적 매출':money(v['매출']),'누적 GP':money(v['GP'])} for m,v in cum.items()])
             st.dataframe(cum_df,use_container_width=True,hide_index=True)
 
