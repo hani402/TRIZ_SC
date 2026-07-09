@@ -8,12 +8,12 @@ import openpyxl
 from openpyxl.utils.datetime import from_excel
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-st.set_page_config(page_title="TRIZ HUB", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="TRIZ 영업실 업무 프로그램", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown('''
 <style>
 html, body, [class*="css"]{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;}
-.stApp{background:#f6f8fb}.block-container{padding-top:1.4rem;max-width:1380px}section[data-testid="stSidebar"]{background:#fff;border-right:1px solid #e5e7eb}.main-title{font-size:2.15rem;font-weight:900;letter-spacing:-.06em;color:#111827}.subtle{color:#64748b;font-size:.94rem;margin-bottom:1.2rem}[data-testid="stMetric"]{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:18px;box-shadow:0 12px 28px rgba(15,23,42,.055)}[data-testid="stMetricValue"]{font-size:1.7rem;font-weight:900;letter-spacing:-.05em}.card{background:#fff;border:1px solid #e5e7eb;border-radius:22px;padding:20px;box-shadow:0 12px 28px rgba(15,23,42,.055);margin-bottom:14px}.dark-card{background:linear-gradient(135deg,#111827,#334155);color:white;border-radius:22px;padding:20px;box-shadow:0 12px 28px rgba(15,23,42,.12);margin-bottom:14px}.dark-card span{color:#cbd5e1}.section-title{font-size:1.45rem;font-weight:900;letter-spacing:-.04em;margin:1rem 0 .35rem}.help{color:#64748b;font-size:.9rem;margin-bottom:.8rem}.chip{display:inline-block;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800;margin-right:6px;margin-bottom:6px;background:#f8fafc;border:1px solid #e5e7eb;color:#475569}.chip.active{background:#111827;color:white;border-color:#111827}.status-green{display:inline-block;padding:5px 8px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11px;font-weight:900}.calendar-grid{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:12px}.day-card{min-height:165px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;padding:14px}.day-top{display:flex;justify-content:space-between;align-items:center;color:#64748b;font-size:12px;margin-bottom:10px}.day-date{color:#111827;font-weight:900;font-size:17px}.schedule-item{border-radius:14px;padding:10px;background:#eff6ff;color:#1d4ed8;font-size:12px;line-height:1.38;font-weight:800;margin-top:8px}.schedule-purple{background:#f5f3ff;color:#6d28d9}.schedule-cancel{background:#fff1f2;color:#be123c;text-decoration:line-through;border:1px solid #ffe4e6}.step-box{background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;padding:16px;height:100%}.step-box b{display:block;font-size:14px;margin-bottom:5px}.step-box span{color:#64748b;font-size:12px}.table-like{border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;background:white}.row{display:grid;grid-template-columns:1.2fr 1fr repeat(4,.8fr);border-bottom:1px solid #eef2f7}.row:last-child{border-bottom:none}.cell{padding:12px 13px;font-size:13px;border-right:1px solid #eef2f7}.cell:last-child{border-right:none}.head .cell{background:#f8fafc;color:#475569;font-weight:900}.group-cell{background:#ecfdf5;color:#047857;font-weight:900;display:flex;align-items:center}.sum .cell{background:#eff6ff;color:#1e40af;font-weight:900}.center{text-align:center}.bar-bg{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,#2563eb,#7c3aed);border-radius:999px}.stButton button,.stDownloadButton button{border-radius:13px;font-weight:800;border:1px solid #111827;background:#111827;color:white}@media(max-width:1000px){.calendar-grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}.cell{border-right:none}}
+.stApp{background:#f6f8fb}.block-container{padding-top:1.4rem;max-width:1380px}section[data-testid="stSidebar"]{background:#fff;border-right:1px solid #e5e7eb}.main-title{font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#111827}.subtle{color:#64748b;font-size:.94rem;margin-bottom:1.2rem}[data-testid="stMetric"]{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:18px;box-shadow:0 12px 28px rgba(15,23,42,.055);min-height:118px;display:flex;flex-direction:column;justify-content:center;}[data-testid="stMetricValue"]{font-size:1.7rem;font-weight:900;letter-spacing:-.05em}.card{background:#fff;border:1px solid #e5e7eb;border-radius:22px;padding:20px;box-shadow:0 12px 28px rgba(15,23,42,.055);margin-bottom:14px}.dark-card{background:linear-gradient(135deg,#111827,#334155);color:white;border-radius:22px;padding:20px;box-shadow:0 12px 28px rgba(15,23,42,.12);margin-bottom:14px}.dark-card span{color:#cbd5e1}.section-title{font-size:1.45rem;font-weight:900;letter-spacing:-.04em;margin:1rem 0 .35rem}.help{color:#64748b;font-size:.9rem;margin-bottom:.8rem}.chip{display:inline-block;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800;margin-right:6px;margin-bottom:6px;background:#f8fafc;border:1px solid #e5e7eb;color:#475569}.chip.active{background:#111827;color:white;border-color:#111827}.status-green{display:inline-block;padding:5px 8px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11px;font-weight:900}.calendar-grid{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:12px}.day-card{min-height:165px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;padding:14px}.day-top{display:flex;justify-content:space-between;align-items:center;color:#64748b;font-size:12px;margin-bottom:10px}.day-date{color:#111827;font-weight:900;font-size:17px}.schedule-item{border-radius:14px;padding:10px;background:#eff6ff;color:#1d4ed8;font-size:12px;line-height:1.38;font-weight:800;margin-top:8px}.schedule-purple{background:#f5f3ff;color:#6d28d9}.schedule-cancel{background:#fff1f2;color:#be123c;text-decoration:line-through;border:1px solid #ffe4e6}.step-box{background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;padding:16px;height:100%}.step-box b{display:block;font-size:14px;margin-bottom:5px}.step-box span{color:#64748b;font-size:12px}.table-like{border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;background:white}.row{display:grid;grid-template-columns:1.2fr 1fr repeat(4,.8fr);border-bottom:1px solid #eef2f7}.row:last-child{border-bottom:none}.cell{padding:12px 13px;font-size:13px;border-right:1px solid #eef2f7}.cell:last-child{border-right:none}.head .cell{background:#f8fafc;color:#475569;font-weight:900}.group-cell{background:#ecfdf5;color:#047857;font-weight:900;display:flex;align-items:center}.sum .cell{background:#eff6ff;color:#1e40af;font-weight:900}.center{text-align:center}.bar-bg{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,#2563eb,#7c3aed);border-radius:999px}.stButton button,.stDownloadButton button{border-radius:13px;font-weight:800;border:1px solid #111827;background:#111827;color:white}@media(max-width:1000px){.calendar-grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}.cell{border-right:none}}
 .field-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 16px;margin-top:12px}
 .field-item{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px 13px}
 .field-item b{display:block;font-size:11px;color:#64748b;font-weight:800;margin-bottom:3px}
@@ -28,6 +28,10 @@ html, body, [class*="css"]{font-family:-apple-system,BlinkMacSystemFont,"Apple S
 .deal-table td.center{text-align:center;font-weight:800}
 .deal-table td.group-cell{background:#ecfdf5;color:#047857;font-weight:900;text-align:center;vertical-align:middle}
 .deal-table tr.total td{background:#eff6ff;color:#1e40af;font-weight:900}
+.month-summary-table{font-size:16px;background:#fff}
+.month-summary-table th{background:#f8fafc;color:#475569;font-weight:900;padding:14px 12px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:15px}
+.month-summary-table td{padding:14px 12px;border:1px solid #eef2f7;font-size:16px}
+.month-summary-table td.center{text-align:center;font-weight:800}
 @media(max-width:1000px){.field-grid{grid-template-columns:1fr}}
 .gantt-wrap{overflow-x:auto;}
 .gantt-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:5px 8px;align-items:center;}
@@ -442,21 +446,26 @@ def to_date_value(v):
         except Exception: return None
     return None
 
-def clean_product_name(name):
-    """'프레센티아 / 넥필' 또는 '프레센티아 X 넥필' 모두 'X'로 통일해 '프레센티아X넥필'로.
-    단, '(순한맛/오리지널맛)'처럼 괄호 안의 '/'는 '또는' 의미이므로 그대로 둔다."""
-    if not name: return ''
-    s = str(name).strip()
-    parts = re.split(r'(\([^)]*\))', s)
-    for i in range(0, len(parts), 2):
-        parts[i] = re.sub(r'\s*[/Xx]\s*', 'X', parts[i])
-    return ''.join(parts)
-
 def format_deal_name(seller, product):
+    """셀러/상품명을 합쳐서 표시용 이름을 만든다. 예: '초이끄'+'프레센티아/넥필' → '초이끄/프레센티아X넥필'
+    (여러 '/' 중 마지막 하나만 콜라보 표시용 'X'로 바뀌고, 앞쪽 구분자는 '/' 그대로 유지)
+    단, '(순한맛/오리지널맛)'처럼 괄호 안의 '/'는 '또는' 의미이므로 건드리지 않는다."""
     seller = str(seller).strip() if seller else ''
-    product = clean_product_name(product)
+    product = str(product).strip() if product else ''
     parts = [p for p in (seller, product) if p]
-    return '/'.join(parts) if parts else '(이름없음)'
+    if not parts:
+        return '(이름없음)'
+    combined = '/'.join(parts)
+    paren_spans = []
+    def _stash(m):
+        paren_spans.append(m.group(0))
+        return f'\x00{len(paren_spans) - 1}\x00'
+    protected = re.sub(r'\([^)]*\)', _stash, combined)
+    matches = list(re.finditer(r'\s*/\s*', protected))
+    if matches:
+        last = matches[-1]
+        protected = protected[:last.start()] + 'X' + protected[last.end():]
+    return re.sub(r'\x00(\d+)\x00', lambda m: paren_spans[int(m.group(1))], protected)
 
 def get_week_deal_list(board_path, year, month, week_start, week_end):
     """이번 주(월~일)에 시작하는 공구를 현황판 기재 순서 그대로 확정/취소로 분리.
@@ -506,7 +515,7 @@ def render_monthly_table_html(board_data):
                  f'<td class="center">{money(d["actual_revenue"])}</td><td class="center">{money(d["actual_gp"])}</td>'
                  f'<td class="center" style="color:{rev_color};font-weight:900;">{rev_pct:.1f}%</td>'
                  f'<td class="center" style="color:{gp_color};font-weight:900;">{gp_pct:.1f}%</td></tr>')
-    return f'<div class="card" style="overflow-x:auto;padding:0;"><table class="deal-table"><thead><tr><th>연월</th><th>예상매출</th><th>예상GP</th><th>매출</th><th>GP</th><th>매출 달성률</th><th>GP 달성률</th></tr></thead><tbody>{rows}</tbody></table></div>'
+    return f'<div class="card" style="overflow-x:auto;padding:0;"><table class="month-summary-table" style="width:100%;border-collapse:collapse;"><thead><tr><th>연월</th><th>예상매출</th><th>예상GP</th><th>매출</th><th>GP</th><th>매출 달성률</th><th>GP 달성률</th></tr></thead><tbody>{rows}</tbody></table></div>'
 
 def render_deal_list_html(title, items):
     if not items:
@@ -725,13 +734,13 @@ manager_df=pd.DataFrame([{"담당자":"매니저 A","공구수":8,"매출":230_0
 manager_df['달성률']=(manager_df['매출']/manager_df['KPI']*100).round(1)
 
 with st.sidebar:
-    st.markdown('## 📊 TRIZ HUB')
+    st.markdown('## 📊 TRIZ 영업실 업무 프로그램')
     st.caption('보고용 PC 프로그램 데모')
     page=st.radio('메뉴',['🏠 메인 대시보드','📅 공구 일정','💰 매출 집계','🎁 이벤트 추첨','👩 담당자별 매출','🔍 히스토리 검색','📢 공구 알람'],label_visibility='collapsed')
     st.markdown('---')
     st.caption('※ 현재 버전은 보고용 시안입니다. 일부 업로드/버튼은 화면 시연용입니다.')
 
-st.markdown('<div class="main-title">TRIZ HUB</div>',unsafe_allow_html=True)
+st.markdown('<div class="main-title">TRIZ 영업실 업무 프로그램</div>',unsafe_allow_html=True)
 st.markdown('<div class="subtle">주문서·매출 파일 업로드 기반으로 영업실 루틴 업무를 자동화하는 내부 포털 PC 데모</div>',unsafe_allow_html=True)
 
 if page=='🏠 메인 대시보드':
@@ -746,6 +755,10 @@ if page=='🏠 메인 대시보드':
 
     board_data_all=load_all_dashboard_data()[0]
     board_data=filter_up_to_current_month(board_data_all)
+
+    if os.path.exists(BOARD_PATH):
+        updated_dt=datetime.fromtimestamp(os.path.getmtime(BOARD_PATH))
+        st.markdown(f'<span class="chip active">🕒 업데이트 : {updated_dt.strftime("%Y-%m-%d %H:%M")}</span>',unsafe_allow_html=True)
 
     if not board_data:
         st.markdown('<div class="dark-card"><div style="display:flex;justify-content:space-between;gap:20px;align-items:center;"><div><b style="font-size:18px;">아직 업로드된 공구현황판이 없습니다</b><br><span>위 업로드 영역에서 공구현황판을 올리면 아래 지표가 실제 데이터로 자동 전환됩니다. (지금은 샘플 수치)</span></div></div></div>',unsafe_allow_html=True)
