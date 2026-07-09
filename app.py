@@ -34,6 +34,20 @@ html, body, [class*="css"]{font-family:-apple-system,BlinkMacSystemFont,"Apple S
 .month-summary-table td{padding:14px 12px;border:1px solid #eef2f7;font-size:16px}
 .month-summary-table td.center{text-align:center;font-weight:800}
 @media(max-width:1000px){.field-grid{grid-template-columns:1fr}}
+.nav-group{font-size:11px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin:22px 4px 6px;display:flex;align-items:center;gap:6px}
+.nav-group:first-of-type{margin-top:4px}
+.nav-group::after{content:'';flex:1;height:1px;background:#eef2f7}
+section[data-testid="stSidebar"] div[role="radiogroup"]{gap:1px}
+section[data-testid="stSidebar"] div[role="radiogroup"] label{padding:9px 12px;border-radius:12px;transition:background .12s ease;margin-bottom:1px}
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover{background:#f1f5f9}
+section[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"]{background:#111827}
+.breadcrumb{color:#94a3b8;font-size:12.5px;font-weight:800;letter-spacing:.02em;margin-bottom:2px}
+.breadcrumb b{color:#334155}
+[data-testid="stAppViewContainer"]{background:linear-gradient(180deg,#f8fafc 0%,#f6f8fb 320px)}
+.sidebar-badge{display:flex;align-items:center;gap:10px;padding:2px 0 14px}
+.sidebar-badge .dot{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sidebar-badge .txt b{display:block;font-size:14.5px;font-weight:900;letter-spacing:-.02em;color:#111827;line-height:1.25}
+.sidebar-badge .txt span{font-size:11px;color:#94a3b8;font-weight:700}
 .gantt-wrap{overflow-x:auto;}
 .gantt-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:5px 8px;align-items:center;}
 .gantt-day-head{text-align:center;padding:8px 0;font-weight:900;color:#64748b;font-size:13px;}
@@ -751,18 +765,29 @@ manager_df=pd.DataFrame([{"담당자":"매니저 A","공구수":8,"매출":230_0
 manager_df['달성률']=(manager_df['매출']/manager_df['KPI']*100).round(1)
 
 with st.sidebar:
-    st.markdown('## 📊 TRIZ 영업실 업무 프로그램')
-    st.caption('보고용 PC 프로그램 데모')
-    page=st.radio('메뉴',['🏠 메인 대시보드','📅 공구 일정','💰 매출 집계','🎁 이벤트 추첨','👩 담당자별 매출','🔍 히스토리 검색','📢 공구 알람'],label_visibility='collapsed')
-    st.markdown('---')
-    st.caption('※ 현재 버전은 보고용 시안입니다. 일부 업로드/버튼은 화면 시연용입니다.')
+    st.markdown('<div class="sidebar-badge"><div class="dot">📊</div><div class="txt"><b>TRIZ 영업실</b><span>업무 프로그램</span></div></div>',unsafe_allow_html=True)
 
+    major=st.radio('대분류',['🏠 메인 대시보드','🤖 자동 프로그램'],label_visibility='collapsed',key='nav_major')
+
+    if major=='🏠 메인 대시보드':
+        st.markdown('<div class="nav-group">메인 대시보드</div>',unsafe_allow_html=True)
+        page=st.radio('소분류',['🏠 대시보드','📅 공구 일정','👩 담당자별 매출','🔍 히스토리 검색'],label_visibility='collapsed',key='nav_minor_main')
+        if page=='🏠 대시보드': page='🏠 메인 대시보드'
+    else:
+        st.markdown('<div class="nav-group">자동 프로그램</div>',unsafe_allow_html=True)
+        page=st.radio('소분류',['💰 매출 집계','🎁 이벤트 추첨','📢 공구 알람'],label_visibility='collapsed',key='nav_minor_auto')
+
+    st.markdown('---')
+    st.caption('※ 내부 공유용 프로그램입니다. 일부 업로드/버튼은 화면 시연용입니다.')
+
+_breadcrumb_sub='대시보드' if page=='🏠 메인 대시보드' else page.split(' ',1)[1]
+st.markdown(f'<div class="breadcrumb">{major.split(" ",1)[1]} <span style="color:#cbd5e1;">›</span> <b>{_breadcrumb_sub}</b></div>',unsafe_allow_html=True)
 st.markdown('<div class="main-title">TRIZ 영업실 업무 프로그램</div>',unsafe_allow_html=True)
-st.markdown('<div class="subtle">주문서·매출 파일 업로드 기반으로 영업실 루틴 업무를 자동화하는 내부 포털 PC 데모</div>',unsafe_allow_html=True)
+st.markdown('<div class="subtle">영업실 루틴 업무를 자동화하는 내부 공유용 프로그램입니다.</div>',unsafe_allow_html=True)
 
 if page=='🏠 메인 대시보드':
     st.markdown('<div class="section-title">🏠 메인 대시보드</div>',unsafe_allow_html=True)
-    st.markdown('<div class="help">공구현황판을 업로드하면 해당 월의 매출·GP와 예상 대비 실적이 자동으로 표시됩니다. 업로드한 파일은 앱 폴더(data/)에 계속 저장됩니다.</div>',unsafe_allow_html=True)
+    st.markdown('<div class="help">26년 공구현황판 시트만 업로드 가능합니다. (다른 문서는 업로드 x)</div>',unsafe_allow_html=True)
 
     with st.expander('📁 공구현황판 업로드',expanded=False):
         board_up=st.file_uploader('공구현황판 업로드 (여러 월 시트가 포함된 워크북 1개)',type=['xlsx'],key='board_upload')
