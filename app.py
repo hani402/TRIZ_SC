@@ -531,15 +531,11 @@ def aggregate_by_manager(merged):
             t['매출'] += v['매출']; t['GP'] += v['GP']
     return totals
 
-def cumulative_by_manager_upto_month(board_data, year, upto_month):
-    """해당 연도의 1월~upto_month월까지 담당자별 누적 매출/GP (공구현황판 기준)."""
-    totals = {}
-    for (y, m), d in board_data.items():
-        if y == year and m <= upto_month:
-            for mgr, v in d['by_manager'].items():
-                t = totals.setdefault(mgr, {'매출': 0, 'GP': 0})
-                t['매출'] += v['매출']; t['GP'] += v['GP']
-    return totals
+def manager_totals_for_month(board_data, year, month):
+    """해당 연/월 딱 그 달만의 담당자별 매출/GP (누적 아님)."""
+    d = board_data.get((year, month))
+    return d['by_manager'] if d else {}
+
 def filter_up_to_current_month(data_by_ym):
     """미래 월(아직 오지 않은 달) 시트는 대시보드 집계에서 제외."""
     today = date.today()
@@ -1099,21 +1095,26 @@ elif page=='👩 담당자별 매출':
 
         st.markdown(render_rank_table(real_df.to_dict('records')),unsafe_allow_html=True)
 
-        st.markdown('<div class="section-title" style="font-size:1.1rem;">📆 담당자별(월별) 누적 조회</div>',unsafe_allow_html=True)
+        st.markdown('<div class="section-title" style="font-size:1.1rem;">📆 담당자별(월별) 조회</div>',unsafe_allow_html=True)
         managers=real_df['담당자'].tolist()
         months_avail=sorted({m for (y,m) in board_data if y==cur_year})
+        month_options=['전체']+[f'{m}월' for m in months_avail]
         sel1,sel2=st.columns(2)
         with sel1: manager_sel=st.selectbox('담당자',['전체']+managers)
-        with sel2: month_sel=st.selectbox(f'{cur_year}년 조회월',months_avail,index=len(months_avail)-1,format_func=lambda m:f'{m}월') if months_avail else None
+        with sel2: month_sel_label=st.selectbox(f'{cur_year}년 조회월',month_options)
 
-        if month_sel:
-            cum=cumulative_by_manager_upto_month(board_data,cur_year,month_sel)
-            if manager_sel!='전체':
-                cum={manager_sel:cum.get(manager_sel,{'매출':0,'GP':0})}
-            else:
-                cum={m:cum.get(m,{'매출':0,'GP':0}) for m in managers}
-            cum_df=pd.DataFrame([{'담당자':m,'누적 매출':money(v['매출']),'누적 GP':money(v['GP'])} for m,v in cum.items()])
-            st.dataframe(cum_df,use_container_width=True,hide_index=True)
+        if month_sel_label=='전체':
+            result=aggregate_by_manager(board_data)
+        else:
+            month_num=int(month_sel_label.replace('월',''))
+            result=manager_totals_for_month(board_data,cur_year,month_num)
+
+        if manager_sel!='전체':
+            result={manager_sel:result.get(manager_sel,{'매출':0,'GP':0})}
+        else:
+            result={m:result.get(m,{'매출':0,'GP':0}) for m in managers}
+        result_df=pd.DataFrame([{'담당자':m,'매출':money(v['매출']),'GP':money(v['GP'])} for m,v in result.items()])
+        st.dataframe(result_df,use_container_width=True,hide_index=True)
 
 
 
