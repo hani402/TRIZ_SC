@@ -52,12 +52,13 @@ section[data-testid="stSidebar"]{background:#fff;border-right:1px solid #e5e7eb}
 .stButton button,.stDownloadButton button{border-radius:7px;font-weight:700;border:1px solid #0f172a;background:#0f172a;color:white}
 .stButton button:hover,.stDownloadButton button:hover{background:#1e293b;border-color:#1e293b}
 div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[data-baseweb="select"]>div{border-radius:7px !important}
-.deal-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
-.deal-table th{background:#f8fafc;color:#475569;font-weight:800;padding:10px 8px;border:1px solid #eef2f7;text-align:center;white-space:nowrap}
-.deal-table td{padding:9px 10px;border:1px solid #eef2f7}
+.deal-table{width:100%;border-collapse:collapse;font-size:14.5px;background:#fff}
+.deal-table th{background:#f8fafc;color:#475569;font-weight:800;padding:12px 10px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:13.5px}
+.deal-table td{padding:11px 12px;border:1px solid #eef2f7}
 .deal-table td.center{text-align:center;font-weight:700}
 .deal-table td.group-cell{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;vertical-align:middle}
 .deal-table tr.total td{background:#eff6ff;color:#1e40af;font-weight:800}
+.deal-table tr.daytotal td{background:#fffbeb;color:#92400e;font-weight:800}
 .month-summary-table{font-size:15px;background:#fff}
 .month-summary-table th{background:#f8fafc;color:#475569;font-weight:800;padding:13px 12px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:13.5px}
 .month-summary-table td{padding:13px 12px;border:1px solid #eef2f7;font-size:15px}
@@ -196,6 +197,22 @@ def render_deal_summary_html(summary):
     html = '<div class="card" style="overflow-x:auto;padding:0;"><table class="deal-table"><thead><tr>'
     html += '<th>상품그룹</th><th>옵션</th>' + ''.join(f'<th>{l}</th>' for l in day_labels) + '<th>마감</th><th>상품 금액</th>'
     html += '</tr></thead><tbody>'
+
+    day_totals = {l: 0 for l in day_labels}
+    day_totals['마감'] = 0
+    amount_total = 0
+    for product in summary['products']:
+        for group in product['groups']:
+            for row in group['rows']:
+                for l in day_labels:
+                    day_totals[l] += row['counts'][l]
+                day_totals['마감'] += row['counts']['마감']
+                amount_total += row['amount']
+    html += '<tr class="daytotal"><td colspan="2" style="text-align:center;">일차별 합계</td>'
+    html += ''.join(f'<td class="center">{day_totals[l]}</td>' for l in day_labels)
+    html += f'<td class="center">{day_totals["마감"]}</td>'
+    html += f'<td class="center">{fmt_money(amount_total)}</td></tr>'
+
     for product in summary['products']:
         for group in product['groups']:
             rowspan = len(group['rows'])
