@@ -184,6 +184,7 @@ def build_deal_summary(df, start_date, deadline_date):
                 counts = {label: int(odf.loc[odf['버킷'] == label, '순주문수량'].sum()) for label in day_labels}
                 counts['마감'] = int(odf.loc[odf['버킷'] == '마감', '순주문수량'].sum())
                 rows.append({'option': opt_name, 'counts': counts, 'amount': float(odf['순매출액'].sum())})
+            rows.sort(key=lambda r: sum(r['counts'].values()), reverse=True)
             groups.append({'group': group_name, 'rows': rows})
         products.append({'product': product_name, 'groups': groups})
 
@@ -224,9 +225,10 @@ def render_deal_summary_html(summary):
                 html += ''.join(f'<td class="center">{row["counts"][l]}</td>' for l in day_labels)
                 html += f'<td class="center">{row["counts"]["마감"]}</td>'
                 html += f'<td class="center">{fmt_money(row["amount"])}</td></tr>'
-    html += f'<tr class="total"><td colspan="2" style="text-align:center;">총 주문 수량 / 총 판매 금액</td>'
-    html += ''.join('<td></td>' for _ in day_labels) + '<td></td>'
-    html += f'<td class="center">{summary["total_qty"]}건 · {fmt_money(summary["total_amount"])}</td></tr>'
+    html += f'<tr class="total"><td colspan="2" style="text-align:center;">합계</td>'
+    html += ''.join('<td></td>' for _ in day_labels)
+    html += f'<td class="center">총 주문 수량<br>{summary["total_qty"]}건</td>'
+    html += f'<td class="center">총 판매 금액<br>{fmt_money(summary["total_amount"])}</td></tr>'
     html += '</tbody></table></div>'
     return html
 
