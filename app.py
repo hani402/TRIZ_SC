@@ -51,14 +51,20 @@ section[data-testid="stSidebar"]{background:#fff;border-right:1px solid #e5e7eb}
 .center{text-align:center}
 .stButton button,.stDownloadButton button{border-radius:7px;font-weight:700;border:1px solid #0f172a;background:#0f172a;color:white}
 .stButton button:hover,.stDownloadButton button:hover{background:#1e293b;border-color:#1e293b}
+section[data-testid="stSidebar"] .stButton button{text-align:left;justify-content:flex-start;font-size:13.5px;padding:8px 12px;box-shadow:none;margin-bottom:2px}
+section[data-testid="stSidebar"] .stButton button[kind="secondary"]{background:transparent;border:1px solid transparent;color:#475569;font-weight:600}
+section[data-testid="stSidebar"] .stButton button[kind="secondary"]:hover{background:#f1f5f9;border-color:#f1f5f9;color:#0f172a}
+section[data-testid="stSidebar"] .stButton button[kind="primary"]{background:#0f172a;border-color:#0f172a;color:white;font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.12)}
 div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[data-baseweb="select"]>div{border-radius:7px !important}
 .deal-table{width:100%;border-collapse:collapse;font-size:14.5px;background:#fff}
 .deal-table th{background:#f8fafc;color:#475569;font-weight:800;padding:12px 10px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:13.5px}
 .deal-table td{padding:11px 12px;border:1px solid #eef2f7}
 .deal-table td.center{text-align:center;font-weight:700}
 .deal-table td.group-cell{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;vertical-align:middle}
-.deal-table tr.total td{background:#eff6ff;color:#1e40af;font-weight:800}
+.deal-table tr.total td{background:#eff6ff;color:#1e40af;font-weight:800;border-top:2px solid #bfdbfe}
+.deal-table tr.total td:first-child{border-left:3px solid #2563eb}
 .deal-table tr.daytotal td{background:#fffbeb;color:#92400e;font-weight:800}
+.deal-table tr.daytotal td:first-child{border-left:3px solid #d97706}
 .month-summary-table{font-size:15px;background:#fff}
 .month-summary-table th{background:#f8fafc;color:#475569;font-weight:800;padding:13px 12px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:13.5px}
 .month-summary-table td{padding:13px 12px;border:1px solid #eef2f7;font-size:15px}
@@ -90,9 +96,6 @@ div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[da
 .nav-group{font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin:20px 4px 6px;display:flex;align-items:center;gap:6px}
 .nav-group:first-of-type{margin-top:4px}
 .nav-group::after{content:'';flex:1;height:1px;background:#eef2f7}
-section[data-testid="stSidebar"] div[role="radiogroup"]{gap:1px}
-section[data-testid="stSidebar"] div[role="radiogroup"] label{padding:8px 11px;border-radius:7px;transition:background .12s ease;margin-bottom:1px}
-section[data-testid="stSidebar"] div[role="radiogroup"] label:hover{background:#f1f5f9}
 .breadcrumb{color:#94a3b8;font-size:12px;font-weight:700;letter-spacing:.01em;margin-bottom:2px}
 .breadcrumb b{color:#334155}
 .sidebar-badge{display:flex;align-items:center;gap:10px;padding:2px 0 14px}
@@ -846,18 +849,37 @@ def render_gantt_calendar_html(week_start, week_end, deals):
 manager_df=pd.DataFrame([{"담당자":"매니저 A","공구수":8,"매출":230_000_000,"GP":18_600_000,"KPI":250_000_000},{"담당자":"매니저 B","공구수":6,"매출":180_000_000,"GP":13_500_000,"KPI":220_000_000},{"담당자":"매니저 C","공구수":4,"매출":120_000_000,"GP":8_640_000,"KPI":180_000_000}])
 manager_df['달성률']=(manager_df['매출']/manager_df['KPI']*100).round(1)
 
+NAV_STRUCTURE={'🏠 메인 대시보드':['🏠 대시보드','📅 공구 일정','👩 담당자별 매출','🔍 히스토리 검색'],'⚙️ 자동 프로그램':['💰 매출 집계','🎁 이벤트 추첨','📢 공구 알람']}
+
 with st.sidebar:
     st.markdown('<div class="sidebar-badge"><div class="dot">📊</div><div class="txt"><b>TRIZ 영업실</b><span>업무 프로그램</span></div></div>',unsafe_allow_html=True)
 
-    major=st.radio('대분류',['🏠 메인 대시보드','⚙️ 자동 프로그램'],label_visibility='collapsed',key='nav_major')
+    st.session_state.setdefault('nav_major','🏠 메인 대시보드')
+    maj_cols=st.columns(2)
+    for i,maj in enumerate(NAV_STRUCTURE.keys()):
+        with maj_cols[i]:
+            is_active=st.session_state['nav_major']==maj
+            if st.button(maj,key=f'majbtn_{maj}',use_container_width=True,type='primary' if is_active else 'secondary'):
+                if not is_active:
+                    st.session_state['nav_major']=maj
+                    st.session_state['nav_minor']=NAV_STRUCTURE[maj][0]
+                    st.rerun()
 
-    if major=='🏠 메인 대시보드':
-        st.markdown('<div class="nav-group">메인 대시보드</div>',unsafe_allow_html=True)
-        page=st.radio('소분류',['🏠 대시보드','📅 공구 일정','👩 담당자별 매출','🔍 히스토리 검색'],label_visibility='collapsed',key='nav_minor_main')
-        if page=='🏠 대시보드': page='🏠 메인 대시보드'
-    else:
-        st.markdown('<div class="nav-group">자동 프로그램</div>',unsafe_allow_html=True)
-        page=st.radio('소분류',['💰 매출 집계','🎁 이벤트 추첨','📢 공구 알람'],label_visibility='collapsed',key='nav_minor_auto')
+    major=st.session_state['nav_major']
+    minor_options=NAV_STRUCTURE[major]
+    st.session_state.setdefault('nav_minor',minor_options[0])
+    if st.session_state['nav_minor'] not in minor_options:
+        st.session_state['nav_minor']=minor_options[0]
+
+    st.markdown(f'<div class="nav-group">{major.split(" ",1)[1]}</div>',unsafe_allow_html=True)
+    for opt in minor_options:
+        is_active=st.session_state['nav_minor']==opt
+        if st.button(opt,key=f'minbtn_{opt}',use_container_width=True,type='primary' if is_active else 'secondary'):
+            st.session_state['nav_minor']=opt
+            st.rerun()
+
+    page=st.session_state['nav_minor']
+    if page=='🏠 대시보드': page='🏠 메인 대시보드'
 
     st.markdown('---')
     st.caption('※ 내부 공유용 프로그램입니다.')
