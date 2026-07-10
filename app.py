@@ -184,7 +184,10 @@ def build_deal_summary(df, start_date, deadline_date):
                 counts = {label: int(odf.loc[odf['버킷'] == label, '순주문수량'].sum()) for label in day_labels}
                 counts['마감'] = int(odf.loc[odf['버킷'] == '마감', '순주문수량'].sum())
                 rows.append({'option': opt_name, 'counts': counts, 'amount': float(odf['순매출액'].sum())})
-            rows.sort(key=lambda r: sum(r['counts'].values()), reverse=True)
+            def _option_sort_key(row):
+                m = re.search(r'\d+', str(row['option']))
+                return int(m.group()) if m else 0
+            rows.sort(key=_option_sort_key, reverse=True)
             groups.append({'group': group_name, 'rows': rows})
         products.append({'product': product_name, 'groups': groups})
 
