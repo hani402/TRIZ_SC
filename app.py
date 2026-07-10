@@ -175,6 +175,10 @@ def build_deal_summary(df, start_date, deadline_date):
     df['버킷'] = df['주문일자'].apply(bucket)
     df = df.dropna(subset=['버킷'])
 
+    def _numeric_sort_key(text):
+        m = re.search(r'\d+', str(text))
+        return int(m.group()) if m else 0
+
     products = []
     for product_name, pdf in df.groupby('상품명', sort=False):
         groups = []
@@ -184,11 +188,9 @@ def build_deal_summary(df, start_date, deadline_date):
                 counts = {label: int(odf.loc[odf['버킷'] == label, '순주문수량'].sum()) for label in day_labels}
                 counts['마감'] = int(odf.loc[odf['버킷'] == '마감', '순주문수량'].sum())
                 rows.append({'option': opt_name, 'counts': counts, 'amount': float(odf['순매출액'].sum())})
-            def _option_sort_key(row):
-                m = re.search(r'\d+', str(row['option']))
-                return int(m.group()) if m else 0
-            rows.sort(key=_option_sort_key, reverse=True)
+            rows.sort(key=lambda r: _numeric_sort_key(r['option']), reverse=True)
             groups.append({'group': group_name, 'rows': rows})
+        groups.sort(key=lambda g: _numeric_sort_key(g['group']), reverse=True)
         products.append({'product': product_name, 'groups': groups})
 
     return {
