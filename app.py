@@ -60,7 +60,7 @@ div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[da
 .deal-table th{background:#f8fafc;color:#475569;font-weight:800;padding:12px 10px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:13.5px}
 .deal-table td{padding:11px 12px;border:1px solid #eef2f7}
 .deal-table td.center{text-align:center;font-weight:700}
-.deal-table td.group-cell{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;vertical-align:middle}
+.deal-table td.group-cell{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;vertical-align:top;padding-top:16px}
 .deal-table tr.total td{background:#eff6ff;color:#1e40af;font-weight:800;border-top:2px solid #bfdbfe}
 .deal-table tr.total td:first-child{border-left:3px solid #2563eb}
 .deal-table tr.daytotal td{background:#fffbeb;color:#92400e;font-weight:800}
@@ -204,11 +204,12 @@ def build_deal_summary(df, start_date, deadline_date):
 def render_deal_summary_html(summary):
     day_labels = summary['day_labels']
     html = '<div class="card" style="overflow-x:auto;padding:0;"><table class="deal-table"><thead><tr>'
-    html += '<th>상품그룹</th><th>옵션</th>' + ''.join(f'<th>{l}</th>' for l in day_labels) + '<th>마감</th><th>상품 금액</th>'
+    html += '<th>상품그룹</th><th>옵션</th>' + ''.join(f'<th>{l}</th>' for l in day_labels) + '<th>마감</th><th>누적 주문수량</th><th>상품 금액</th>'
     html += '</tr></thead><tbody>'
 
     day_totals = {l: 0 for l in day_labels}
     day_totals['마감'] = 0
+    qty_total = 0
     amount_total = 0
     for product in summary['products']:
         for group in product['groups']:
@@ -216,10 +217,12 @@ def render_deal_summary_html(summary):
                 for l in day_labels:
                     day_totals[l] += row['counts'][l]
                 day_totals['마감'] += row['counts']['마감']
+                qty_total += sum(row['counts'].values())
                 amount_total += row['amount']
     html += '<tr class="daytotal"><td colspan="2" style="text-align:center;">일차별 합계</td>'
     html += ''.join(f'<td class="center">{day_totals[l]}</td>' for l in day_labels)
     html += f'<td class="center">{day_totals["마감"]}</td>'
+    html += f'<td class="center">{qty_total}</td>'
     html += f'<td class="center">{fmt_money(amount_total)}</td></tr>'
 
     for product in summary['products']:
@@ -232,9 +235,11 @@ def render_deal_summary_html(summary):
                 html += f'<td>{row["option"]}</td>'
                 html += ''.join(f'<td class="center">{row["counts"][l]}</td>' for l in day_labels)
                 html += f'<td class="center">{row["counts"]["마감"]}</td>'
+                html += f'<td class="center">{sum(row["counts"].values())}</td>'
                 html += f'<td class="center">{fmt_money(row["amount"])}</td></tr>'
     html += f'<tr class="total"><td colspan="2" style="text-align:center;">합계</td>'
     html += ''.join('<td></td>' for _ in day_labels)
+    html += '<td></td>'
     html += f'<td class="center">총 주문 수량<br>{summary["total_qty"]}건</td>'
     html += f'<td class="center">총 판매 금액<br>{fmt_money(summary["total_amount"])}</td></tr>'
     html += '</tbody></table></div>'
@@ -245,7 +250,7 @@ def build_deal_summary_excel(summary, meta):
     ws = wb.active
     ws.title = '매출집계'
     day_labels = summary['day_labels']
-    headers = ['상품그룹', '옵션'] + day_labels + ['마감', '상품 금액']
+    headers = ['상품그룹', '옵션'] + day_labels + ['마감', '누적 주문수량']
     header_fill = PatternFill('solid', start_color='111827')
     header_font = Font(bold=True, color='FFFFFF')
     thin = Side(style='thin', color='D9D9D9')
@@ -270,14 +275,14 @@ def build_deal_summary_excel(summary, meta):
                     c.border, c.alignment = border, Alignment(horizontal='center')
                 c = ws.cell(row=r, column=3 + len(day_labels), value=row['counts']['마감'])
                 c.border, c.alignment = border, Alignment(horizontal='center')
-                c = ws.cell(row=r, column=4 + len(day_labels), value=row['amount'])
-                c.number_format, c.border = '#,##0', border
+                c = ws.cell(row=r, column=4 + len(day_labels), value=sum(row['counts'].values()))
+                c.border, c.alignment = border, Alignment(horizontal='center')
                 r += 1
             end_row = r - 1
             gcell = ws.cell(row=start_row, column=1, value=group['group'])
             gcell.font = Font(bold=True)
             gcell.fill = PatternFill('solid', start_color='D9F2E3')
-            gcell.alignment = Alignment(horizontal='center', vertical='center')
+            gcell.alignment = Alignment(horizontal='center', vertical='top')
             if end_row > start_row:
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=end_row, end_column=1)
             for rr in range(start_row, end_row + 1):
@@ -294,7 +299,7 @@ def build_deal_summary_excel(summary, meta):
     ws.column_dimensions['A'].width = 20
     ws.column_dimensions['B'].width = 26
     for i in range(len(day_labels) + 2):
-        ws.column_dimensions[openpyxl.utils.get_column_letter(3 + i)].width = 12
+        ws.column_dimensions[openpyxl.utils.get_column_letter(3 + i)].width = 13
 
     buf = io.BytesIO()
     wb.save(buf)
