@@ -250,7 +250,7 @@ def build_deal_summary_excel(summary, meta):
     ws = wb.active
     ws.title = '매출집계'
     day_labels = summary['day_labels']
-    headers = ['상품그룹', '옵션'] + day_labels + ['마감', '누적 주문수량']
+    headers = ['상품그룹', '옵션'] + day_labels + ['마감', '누적 주문수량', '상품 금액']
     header_fill = PatternFill('solid', start_color='111827')
     header_font = Font(bold=True, color='FFFFFF')
     thin = Side(style='thin', color='D9D9D9')
@@ -277,6 +277,8 @@ def build_deal_summary_excel(summary, meta):
                 c.border, c.alignment = border, Alignment(horizontal='center')
                 c = ws.cell(row=r, column=4 + len(day_labels), value=sum(row['counts'].values()))
                 c.border, c.alignment = border, Alignment(horizontal='center')
+                c = ws.cell(row=r, column=5 + len(day_labels), value=row['amount'])
+                c.number_format, c.border = '#,##0', border
                 r += 1
             end_row = r - 1
             gcell = ws.cell(row=start_row, column=1, value=group['group'])
@@ -298,7 +300,7 @@ def build_deal_summary_excel(summary, meta):
 
     ws.column_dimensions['A'].width = 20
     ws.column_dimensions['B'].width = 26
-    for i in range(len(day_labels) + 2):
+    for i in range(len(day_labels) + 3):
         ws.column_dimensions[openpyxl.utils.get_column_letter(3 + i)].width = 13
 
     buf = io.BytesIO()
