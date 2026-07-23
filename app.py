@@ -70,7 +70,8 @@ div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[da
 .dg-cell{padding:11px 12px;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;}
 .dg-th{background:#f8fafc;color:#475569;font-weight:800;font-size:13.5px;padding:12px 10px;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
 .dg-group{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;padding:11px 12px;}
-.dg-daytotal{background:#fffbeb;color:#92400e;font-weight:800;border-left:3px solid #d97706;}
+.dg-daytotal{background:#fffbeb;color:#92400e;font-weight:800;}
+.dg-daytotal.first{border-left:3px solid #d97706;}
 .dg-total{background:#eff6ff;color:#1e40af;font-weight:800;}
 .dg-total.first{border-left:3px solid #2563eb;}
 .month-summary-table{font-size:15px;background:#fff}
@@ -235,7 +236,7 @@ def render_deal_summary_html(summary):
                 amount_total += row['amount']
 
     r = 2
-    html += f'<div class="dg-cell dg-daytotal" style="grid-column:1 / 3;grid-row:{r};">일차별 합계</div>'
+    html += f'<div class="dg-cell dg-daytotal first" style="grid-column:1 / 3;grid-row:{r};">일차별 합계</div>'
     for ci, l in enumerate(day_labels, start=3):
         html += f'<div class="dg-cell dg-daytotal" style="grid-column:{ci};grid-row:{r};">{day_totals[l]}</div>'
     html += f'<div class="dg-cell dg-daytotal" style="grid-column:{3+n_day};grid-row:{r};">{day_totals["마감"]}</div>'
