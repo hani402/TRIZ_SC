@@ -56,7 +56,7 @@ section[data-testid="stSidebar"] .stButton button[kind="secondary"]{background:t
 section[data-testid="stSidebar"] .stButton button[kind="secondary"]:hover{background:#f1f5f9;border-color:#f1f5f9;color:#0f172a}
 section[data-testid="stSidebar"] .stButton button[kind="primary"]{background:#0f172a;border-color:#0f172a;color:white;font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.12)}
 div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[data-baseweb="select"]>div{border-radius:7px !important}
-.deal-table{width:100%;border-collapse:collapse;font-size:14.5px;background:#fff}
+.deal-table{width:100%;border-collapse:collapse;border-spacing:0;font-size:14.5px;background:#fff}
 .deal-table th{background:#f8fafc;color:#475569;font-weight:800;padding:12px 10px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:13.5px}
 .deal-table td{padding:11px 12px;border:1px solid #eef2f7}
 .deal-table td.center{text-align:center;font-weight:700}
@@ -230,13 +230,13 @@ def render_deal_summary_html(summary):
             n_rows = len(group['rows'])
             for i, row in enumerate(group['rows']):
                 is_first, is_last = i == 0, i == n_rows - 1
-                border_style = ('border-top:none;' if not is_first else '') + ('border-bottom:none;' if not is_last else '')
+                border_style = ('border-top:none !important;' if not is_first else '') + ('border-bottom:none !important;' if not is_last else '')
                 html += '<tr>'
                 if is_first:
                     html += f'<td class="group-cell" style="{border_style}">{group["group"]}</td>'
                 else:
                     html += f'<td class="group-cell" style="{border_style}"></td>'
-                html += f'<td>{row["option"]}</td>'
+                html += f'<td class="center">{row["option"]}</td>'
                 html += ''.join(f'<td class="center">{row["counts"][l]}</td>' for l in day_labels)
                 html += f'<td class="center">{row["counts"]["마감"]}</td>'
                 html += f'<td class="center">{sum(row["counts"].values())}</td>'
