@@ -65,6 +65,14 @@ div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[da
 .deal-table tr.total td:first-child{border-left:3px solid #2563eb}
 .deal-table tr.daytotal td{background:#fffbeb;color:#92400e;font-weight:800}
 .deal-table tr.daytotal td:first-child{border-left:3px solid #d97706}
+.dealgrid-wrap{overflow-x:auto;}
+.dealgrid{display:grid;border:1px solid #eef2f7;border-radius:8px;overflow:hidden;background:#fff;font-size:14.5px;}
+.dg-cell{padding:11px 12px;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;}
+.dg-th{background:#f8fafc;color:#475569;font-weight:800;font-size:13.5px;padding:12px 10px;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
+.dg-group{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;padding:11px 12px;}
+.dg-daytotal{background:#fffbeb;color:#92400e;font-weight:800;border-left:3px solid #d97706;}
+.dg-total{background:#eff6ff;color:#1e40af;font-weight:800;}
+.dg-total.first{border-left:3px solid #2563eb;}
 .month-summary-table{font-size:15px;background:#fff}
 .month-summary-table th{background:#f8fafc;color:#475569;font-weight:800;padding:13px 12px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:13.5px}
 .month-summary-table td{padding:13px 12px;border:1px solid #eef2f7;font-size:15px}
@@ -203,9 +211,15 @@ def build_deal_summary(df, start_date, deadline_date):
 
 def render_deal_summary_html(summary):
     day_labels = summary['day_labels']
-    html = '<div class="card" style="overflow-x:auto;padding:0;"><table class="deal-table"><thead><tr>'
-    html += '<th>상품그룹</th><th>옵션</th>' + ''.join(f'<th>{l}</th>' for l in day_labels) + '<th>마감</th><th>누적 주문수량</th><th>상품 금액</th>'
-    html += '</tr></thead><tbody>'
+    n_day = len(day_labels)
+    total_cols = 2 + n_day + 3  # 상품그룹,옵션,day...,마감,누적주문수량,상품금액
+    col_template = 'minmax(90px,1.1fr) minmax(120px,1.3fr) ' + ' '.join(['minmax(50px,0.65fr)'] * n_day) + ' minmax(55px,0.7fr) minmax(85px,0.95fr) minmax(105px,1.05fr)'
+
+    html = f'<div class="card dealgrid-wrap" style="padding:0;"><div class="dealgrid" style="grid-template-columns:{col_template};">'
+
+    headers = ['상품그룹', '옵션'] + day_labels + ['마감', '누적 주문수량', '상품 금액']
+    for ci, h in enumerate(headers, start=1):
+        html += f'<div class="dg-th" style="grid-column:{ci};grid-row:1;">{h}</div>'
 
     day_totals = {l: 0 for l in day_labels}
     day_totals['마감'] = 0
@@ -219,30 +233,37 @@ def render_deal_summary_html(summary):
                 day_totals['마감'] += row['counts']['마감']
                 qty_total += sum(row['counts'].values())
                 amount_total += row['amount']
-    html += '<tr class="daytotal"><td colspan="2" style="text-align:center;">일차별 합계</td>'
-    html += ''.join(f'<td class="center">{day_totals[l]}</td>' for l in day_labels)
-    html += f'<td class="center">{day_totals["마감"]}</td>'
-    html += f'<td class="center">{qty_total}</td>'
-    html += f'<td class="center">{fmt_money(amount_total)}</td></tr>'
+
+    r = 2
+    html += f'<div class="dg-cell dg-daytotal" style="grid-column:1 / 3;grid-row:{r};">일차별 합계</div>'
+    for ci, l in enumerate(day_labels, start=3):
+        html += f'<div class="dg-cell dg-daytotal" style="grid-column:{ci};grid-row:{r};">{day_totals[l]}</div>'
+    html += f'<div class="dg-cell dg-daytotal" style="grid-column:{3+n_day};grid-row:{r};">{day_totals["마감"]}</div>'
+    html += f'<div class="dg-cell dg-daytotal" style="grid-column:{4+n_day};grid-row:{r};">{qty_total}</div>'
+    html += f'<div class="dg-cell dg-daytotal" style="grid-column:{5+n_day};grid-row:{r};">{fmt_money(amount_total)}</div>'
+    r += 1
 
     for product in summary['products']:
         for group in product['groups']:
-            rowspan = len(group['rows'])
-            for i, row in enumerate(group['rows']):
-                html += '<tr>'
-                if i == 0:
-                    html += f'<td class="group-cell" rowspan="{rowspan}">{group["group"]}</td>'
-                html += f'<td class="center">{row["option"]}</td>'
-                html += ''.join(f'<td class="center">{row["counts"][l]}</td>' for l in day_labels)
-                html += f'<td class="center">{row["counts"]["마감"]}</td>'
-                html += f'<td class="center">{sum(row["counts"].values())}</td>'
-                html += f'<td class="center">{fmt_money(row["amount"])}</td></tr>'
-    html += f'<tr class="total"><td colspan="2" style="text-align:center;">합계</td>'
-    html += ''.join('<td></td>' for _ in day_labels)
-    html += '<td></td>'
-    html += f'<td class="center">총 주문 수량<br>{summary["total_qty"]}건</td>'
-    html += f'<td class="center">총 판매 금액<br>{fmt_money(summary["total_amount"])}</td></tr>'
-    html += '</tbody></table></div>'
+            n_rows = len(group['rows'])
+            html += f'<div class="dg-group" style="grid-column:1;grid-row:{r} / {r+n_rows};">{group["group"]}</div>'
+            for row in group['rows']:
+                html += f'<div class="dg-cell" style="grid-column:2;grid-row:{r};">{row["option"]}</div>'
+                for ci, l in enumerate(day_labels, start=3):
+                    html += f'<div class="dg-cell" style="grid-column:{ci};grid-row:{r};">{row["counts"][l]}</div>'
+                html += f'<div class="dg-cell" style="grid-column:{3+n_day};grid-row:{r};">{row["counts"]["마감"]}</div>'
+                html += f'<div class="dg-cell" style="grid-column:{4+n_day};grid-row:{r};">{sum(row["counts"].values())}</div>'
+                html += f'<div class="dg-cell" style="grid-column:{5+n_day};grid-row:{r};">{fmt_money(row["amount"])}</div>'
+                r += 1
+
+    html += f'<div class="dg-cell dg-total first" style="grid-column:1 / 3;grid-row:{r};">합계</div>'
+    for ci in range(3, 3 + n_day):
+        html += f'<div class="dg-cell dg-total" style="grid-column:{ci};grid-row:{r};"></div>'
+    html += f'<div class="dg-cell dg-total" style="grid-column:{3+n_day};grid-row:{r};"></div>'
+    html += f'<div class="dg-cell dg-total" style="grid-column:{4+n_day};grid-row:{r};">총 주문 수량<br>{summary["total_qty"]}건</div>'
+    html += f'<div class="dg-cell dg-total" style="grid-column:{5+n_day};grid-row:{r};">총 판매 금액<br>{fmt_money(summary["total_amount"])}</div>'
+
+    html += '</div></div>'
     return html
 
 def build_deal_summary_excel(summary, meta):
