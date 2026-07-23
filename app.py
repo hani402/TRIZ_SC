@@ -227,15 +227,11 @@ def render_deal_summary_html(summary):
 
     for product in summary['products']:
         for group in product['groups']:
-            n_rows = len(group['rows'])
+            rowspan = len(group['rows'])
             for i, row in enumerate(group['rows']):
-                is_first, is_last = i == 0, i == n_rows - 1
-                border_style = ('border-top:none !important;' if not is_first else '') + ('border-bottom:none !important;' if not is_last else '')
                 html += '<tr>'
-                if is_first:
-                    html += f'<td class="group-cell" style="{border_style}">{group["group"]}</td>'
-                else:
-                    html += f'<td class="group-cell" style="{border_style}"></td>'
+                if i == 0:
+                    html += f'<td class="group-cell" rowspan="{rowspan}">{group["group"]}</td>'
                 html += f'<td class="center">{row["option"]}</td>'
                 html += ''.join(f'<td class="center">{row["counts"][l]}</td>' for l in day_labels)
                 html += f'<td class="center">{row["counts"]["마감"]}</td>'
