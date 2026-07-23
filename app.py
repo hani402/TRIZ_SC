@@ -60,7 +60,7 @@ div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[da
 .deal-table th{background:#f8fafc;color:#475569;font-weight:800;padding:12px 10px;border:1px solid #eef2f7;text-align:center;white-space:nowrap;font-size:13.5px}
 .deal-table td{padding:11px 12px;border:1px solid #eef2f7}
 .deal-table td.center{text-align:center;font-weight:700}
-.deal-table td.group-cell{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;vertical-align:top;padding-top:16px}
+.deal-table td.group-cell{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;vertical-align:middle}
 .deal-table tr.total td{background:#eff6ff;color:#1e40af;font-weight:800;border-top:2px solid #bfdbfe}
 .deal-table tr.total td:first-child{border-left:3px solid #2563eb}
 .deal-table tr.daytotal td{background:#fffbeb;color:#92400e;font-weight:800}
@@ -227,11 +227,15 @@ def render_deal_summary_html(summary):
 
     for product in summary['products']:
         for group in product['groups']:
-            rowspan = len(group['rows'])
+            n_rows = len(group['rows'])
             for i, row in enumerate(group['rows']):
+                is_first, is_last = i == 0, i == n_rows - 1
+                border_style = ('border-top:none;' if not is_first else '') + ('border-bottom:none;' if not is_last else '')
                 html += '<tr>'
-                if i == 0:
-                    html += f'<td class="group-cell" rowspan="{rowspan}">{group["group"]}</td>'
+                if is_first:
+                    html += f'<td class="group-cell" style="{border_style}">{group["group"]}</td>'
+                else:
+                    html += f'<td class="group-cell" style="{border_style}"></td>'
                 html += f'<td>{row["option"]}</td>'
                 html += ''.join(f'<td class="center">{row["counts"][l]}</td>' for l in day_labels)
                 html += f'<td class="center">{row["counts"]["마감"]}</td>'
@@ -988,9 +992,9 @@ elif page=='💰 매출 집계':
     st.markdown('<div class="help">스룩페이 주문서 엑셀을 업로드하면 일차별 주문건수와 총 매출을 자동 집계합니다. 마감일에는 해당일 주문 + 그 이후 주문이 모두 포함됩니다.</div>',unsafe_allow_html=True)
     s1,s2,s3,s4=st.columns(4)
     with s1: deal_start=st.date_input('공구 시작일',value=date.today(),key='deal_start')
-    with s2: deal_start_time=st.time_input('공구 시작 시간',value=time(10,0),key='deal_start_time')
+    with s2: deal_start_time=st.time_input('공구 시작 시간',value=time(10,0),step=timedelta(minutes=30),key='deal_start_time')
     with s3: deal_end=st.date_input('공구 마감일',value=date.today()+timedelta(days=3),key='deal_end')
-    with s4: deal_end_time=st.time_input('공구 마감 시간',value=time(23,59),key='deal_end_time')
+    with s4: deal_end_time=st.time_input('공구 마감 시간',value=time(23,59),step=timedelta(minutes=30),key='deal_end_time')
 
     order_file=st.file_uploader('📤 스룩페이 주문서 업로드 (.xlsx)',type=['xlsx'],key='deal_order_upload')
 
