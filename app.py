@@ -665,6 +665,27 @@ def render_deal_list_html(title, items):
         body = ''.join(f'<div style="padding:7px 2px;border-bottom:1px solid #f1f5f9;font-size:13px;"><span style="color:#64748b;font-weight:800;margin-right:8px;">{it["date_label"]}</span>{it["name"]}</div>' for it in items)
     return f'<div class="card"><b>{title}</b><div style="margin-top:6px;">{body}</div></div>'
 
+def render_manager_week_cards_html(all_deals, week_start, week_end):
+    """이번 주 시작하는 공구를 담당자별 카드로 묶어서 표시 (건수 많은 담당자 먼저)."""
+    filtered = [d for d in all_deals if week_start <= d['start'] <= week_end]
+    if not filtered:
+        return '<div class="card"><span style="color:#94a3b8;">이번 주에 시작하는 공구가 없습니다.</span></div>'
+    by_manager = {}
+    for d in filtered:
+        by_manager.setdefault(d['manager'], []).append(d)
+    ordered = sorted(by_manager.items(), key=lambda kv: -len(kv[1]))
+    html = '<div class="field-grid">'
+    for mgr, items in ordered:
+        rows = ''
+        for d in items:
+            date_label = f'{d["start"].month}/{d["start"].day}' if d['start'] == d['end'] else f'{d["start"].month}/{d["start"].day}-{d["end"].month}/{d["end"].day}'
+            name = format_deal_name(d['seller'], d['product'])
+            style = 'text-decoration:line-through;color:#94a3b8;' if d['status'] == '취소' else ''
+            rows += f'<div style="padding:6px 2px;border-bottom:1px solid #f1f5f9;font-size:13px;{style}"><span style="color:#64748b;font-weight:800;margin-right:8px;">{date_label}</span>{name}</div>'
+        html += f'<div class="card"><b>{mgr}</b> <span class="chip active">{len(items)}건</span><div style="margin-top:8px;">{rows}</div></div>'
+    html += '</div>'
+    return html
+
 def parse_board_deals(board_path, year, month):
     """공구현황판 특정 월 시트의 개별 공구 행을 시트 기재 순서 그대로 리스트로 반환."""
     if not os.path.exists(board_path): return None
@@ -918,18 +939,19 @@ if page=='🏠 메인 대시보드':
     st.markdown('<div class="section-title">🏠 메인 대시보드</div>',unsafe_allow_html=True)
     st.markdown('<div class="help">26년 공구현황판 시트만 업로드 가능합니다. (다른 문서는 업로드 x)</div>',unsafe_allow_html=True)
 
-    with st.expander('📁 공구현황판 업로드',expanded=False):
+    with st.expander('📁 공구현황판 업로드',expanded=not os.path.exists(BOARD_PATH)):
         board_up=st.file_uploader('공구현황판 업로드 (여러 월 시트가 포함된 워크북 1개)',type=['xlsx'],key='board_upload')
         if board_up is not None:
             save_board_upload(board_up)
             st.success('공구현황판 저장 완료 (다음부터는 자동으로 반영됩니다)')
+        if os.path.exists(BOARD_PATH):
+            updated_dt=datetime.fromtimestamp(os.path.getmtime(BOARD_PATH),tz=ZoneInfo('Asia/Seoul'))
+            st.markdown(f'<span class="chip active">📌 현재 저장된 파일 있음</span><span class="chip">🕒 마지막 업데이트 : {updated_dt.strftime("%Y-%m-%d %H:%M")}</span>',unsafe_allow_html=True)
+        else:
+            st.markdown('<span class="chip">아직 저장된 파일이 없습니다</span>',unsafe_allow_html=True)
 
     board_data_all=load_all_dashboard_data()[0]
     board_data=filter_up_to_current_month(board_data_all)
-
-    if os.path.exists(BOARD_PATH):
-        updated_dt=datetime.fromtimestamp(os.path.getmtime(BOARD_PATH),tz=ZoneInfo('Asia/Seoul'))
-        st.markdown(f'<span class="chip active">🕒 업데이트 : {updated_dt.strftime("%Y-%m-%d %H:%M")}</span>',unsafe_allow_html=True)
 
     if not board_data:
         st.markdown('<div class="dark-card"><div style="display:flex;justify-content:space-between;gap:20px;align-items:center;"><div><b style="font-size:18px;">아직 업로드된 공구현황판이 없습니다</b><br><span>위 업로드 영역에서 공구현황판을 올리면 아래 지표가 실제 데이터로 자동 전환됩니다. (지금은 샘플 수치)</span></div></div></div>',unsafe_allow_html=True)
@@ -948,21 +970,16 @@ if page=='🏠 메인 대시보드':
         c3.metric('예상매출 대비',f'{rev_pct:.1f}%',money(rev_diff))
         c4.metric('예상GP 대비',f'{gp_pct:.1f}%',money(gp_diff))
 
-        st.markdown('<div class="section-title" style="font-size:1.15rem;">📊 월별 매출/GP 현황</div>',unsafe_allow_html=True)
-        st.markdown(render_monthly_table_html(board_data),unsafe_allow_html=True)
-
     st.markdown('<div class="section-title">📌 주간 요약</div>',unsafe_allow_html=True)
     today=date.today()
     week_start=today-timedelta(days=today.weekday())
     week_end=week_start+timedelta(days=6)
-    week_list=get_week_deal_list(BOARD_PATH,today.year,today.month,week_start,week_end)
-    if week_list is None:
+    all_week_deals=get_deals_for_week(BOARD_PATH,week_start,week_end)
+    if all_week_deals is None:
         st.markdown('<div class="card"><b>이번주 공구 현황</b><br><br><span class="chip">공구현황판을 업로드하면 표시됩니다</span></div>',unsafe_allow_html=True)
     else:
         st.markdown(f'<span class="chip">{week_start.month}/{week_start.day}~{week_end.month}/{week_end.day}</span>',unsafe_allow_html=True)
-        wc1,wc2=st.columns(2)
-        with wc1: st.markdown(render_deal_list_html(f'✅ 확정 공구 ({len(week_list["confirmed"])}건)',week_list['confirmed']),unsafe_allow_html=True)
-        with wc2: st.markdown(render_deal_list_html(f'❌ 취소 공구 ({len(week_list["cancelled"])}건)',week_list['cancelled']),unsafe_allow_html=True)
+        st.markdown(render_manager_week_cards_html(all_week_deals,week_start,week_end),unsafe_allow_html=True)
 
 elif page=='📅 공구 일정':
     st.markdown('<div class="section-title">📅 공구 일정</div>',unsafe_allow_html=True)
