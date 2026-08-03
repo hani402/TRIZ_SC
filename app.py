@@ -565,6 +565,151 @@ def manager_totals_for_month(board_data, year, month):
     d = board_data.get((year, month))
     return d['by_manager'] if d else {}
 
+def aggregate_by_manager_month(board_data):
+    """dict[(담당자,연도,월)] -> {'매출':..,'GP':..} (공구현황판 기준, 결산 미사용)."""
+    out = {}
+    for (y, m), d in board_data.items():
+        for mgr, v in d['by_manager'].items():
+            out[(mgr, y, m)] = {'매출': v['매출'], 'GP': v['GP']}
+    return out
+
+# 담당자별 매출/GP KPI 목표치 초기값 (담당자님 제공 자료 기준, data/kpi_targets.csv가 없을 때 최초 1회 생성됨)
+DEFAULT_KPI_ROWS = [
+    ('예림',2026,1,144000000,15800000),('예림',2026,2,107000000,24600000),('예림',2026,3,138000000,19900000),
+    ('예림',2026,4,136000000,17850000),('예림',2026,5,89000000,16600000),('예림',2026,6,148000000,20350000),
+    ('예림',2026,7,155000000,21750000),('예림',2026,8,66000000,16400000),('예림',2026,9,140000000,15600000),
+    ('예림',2026,10,138000000,16650000),('예림',2026,11,123000000,24250000),('예림',2026,12,136000000,18100000),
+    ('유정',2026,1,132000000,10290000),('유정',2026,2,185000000,22880000),('유정',2026,3,220000000,21050000),
+    ('유정',2026,4,143000000,22550000),('유정',2026,5,160000000,20400000),('유정',2026,6,115000000,24050000),
+    ('유정',2026,7,222000000,21990000),('유정',2026,8,108000000,14980000),('유정',2026,9,82000000,18540000),
+    ('유정',2026,10,118000000,14450000),('유정',2026,11,160000000,16700000),('유정',2026,12,91000000,19630000),
+    ('명지',2026,1,65300000,14290000),('명지',2026,2,72700000,6810000),('명지',2026,3,160700000,27250000),
+    ('명지',2026,4,65300000,18350000),('명지',2026,5,118400000,17990000),('명지',2026,6,130700000,20720000),
+    ('명지',2026,7,89600000,21110000),('명지',2026,8,102700000,14870000),('명지',2026,9,129400000,22880000),
+    ('명지',2026,10,99100000,24470000),('명지',2026,11,89700000,13170000),('명지',2026,12,128400000,18220000),
+    ('지영',2026,4,30268600,7002550),('지영',2026,5,67295230,7811590),('지영',2026,6,69094170,16489340),
+]
+KPI_PATH = os.path.join(DATA_DIR, 'kpi_targets.csv')
+KPI_SOURCE_PATH = os.path.join(DATA_DIR, 'kpi_source.xlsx')
+
+def ensure_default_kpi_file():
+    ensure_data_dirs()
+    if not os.path.exists(KPI_PATH):
+        pd.DataFrame(DEFAULT_KPI_ROWS, columns=['담당자','연도','월','매출KPI','GPKPI']).to_csv(KPI_PATH, index=False, encoding='utf-8-sig')
+
+def save_kpi_upload(uploaded_file):
+    ensure_data_dirs()
+    with open(KPI_SOURCE_PATH, 'wb') as f:
+        f.write(uploaded_file.getbuffer())
+
+def parse_kpi_source_file(path):
+    """'담당자/구분/26Y 합계/1월.../12월' 형식의 KPI 문서를 dict[(담당자,연도,월)] -> {'매출KPI':..,'GPKPI':..} 로 변환."""
+    wb = openpyxl.load_workbook(path, data_only=True)
+    ws = wb.worksheets[0]
+    header_row, col_map, year = None, {}, date.today().year
+    for r in range(1, 10):
+        for c in range(1, ws.max_column + 1):
+            if header_key(ws.cell(row=r, column=c).value) == '담당자':
+                header_row = r; break
+        if header_row: break
+    if header_row is None: return {}
+    for c in range(1, ws.max_column + 1):
+        v = ws.cell(row=header_row, column=c).value
+        k = header_key(v)
+        if k == '담당자': col_map['담당자'] = c
+        elif k == '구분': col_map['구분'] = c
+        elif '합계' in k:
+            m = re.search(r'(\d{2,4})Y', str(v))
+            if m:
+                y = int(m.group(1)); year = y + 2000 if y < 100 else y
+        else:
+            m = re.match(r'^(\d{1,2})월$', k)
+            if m: col_map[int(m.group(1))] = c
+    if '담당자' not in col_map or '구분' not in col_map: return {}
+    out, cur_manager = {}, None
+    for r in range(header_row + 1, ws.max_row + 1):
+        mgr_cell = ws.cell(row=r, column=col_map['담당자']).value
+        if mgr_cell: cur_manager = str(mgr_cell).strip()
+        gubun = ws.cell(row=r, column=col_map['구분']).value
+        if not cur_manager or not gubun: continue
+        gubun = str(gubun).strip()
+        field = '매출KPI' if '매출' in gubun else ('GPKPI' if 'GP' in gubun else None)
+        if not field: continue
+        for month in range(1, 13):
+            if month not in col_map: continue
+            val = ws.cell(row=r, column=col_map[month]).value
+            num = val if isinstance(val, (int, float)) else None
+            key = (cur_manager, year, month)
+            out.setdefault(key, {'매출KPI': None, 'GPKPI': None})
+            out[key][field] = num
+    return out
+
+def load_kpi_targets():
+    """업로드된 KPI 문서(data/kpi_source.xlsx)가 있으면 그걸 우선 사용하고,
+    없으면 최초 안내드린 기본값(data/kpi_targets.csv)을 사용."""
+    if os.path.exists(KPI_SOURCE_PATH):
+        parsed = parse_kpi_source_file(KPI_SOURCE_PATH)
+        if parsed: return parsed
+    ensure_default_kpi_file()
+    df = pd.read_csv(KPI_PATH)
+    out = {}
+    for _, row in df.iterrows():
+        key = (str(row['담당자']).strip(), int(row['연도']), int(row['월']))
+        rev, gp = row.get('매출KPI'), row.get('GPKPI')
+        out[key] = {
+            '매출KPI': None if pd.isna(rev) else float(rev),
+            'GPKPI': None if pd.isna(gp) else float(gp),
+        }
+    return out
+
+def render_manager_kpi_table_html(board_data, kpi, year, month):
+    actuals = aggregate_by_manager_month(board_data)
+    managers = sorted(set([k[0] for k in kpi] + [mgr for (y,m),d in board_data.items() for mgr in d['by_manager']]))
+
+    def fmt_amt(v): return money(v) if v else '-'
+    def fmt_pct(actual, target):
+        if not target: return '-'
+        pct = actual / target * 100
+        color = '#2563eb' if pct >= 100 else '#dc2626'
+        return f'<span style="color:{color};font-weight:900;">{pct:.2f}%</span>'
+
+    col_template = 'minmax(90px,1fr) minmax(120px,1.2fr) minmax(110px,1fr) minmax(110px,1fr)'
+    html = f'<div class="card dealgrid-wrap" style="padding:0;"><div class="dealgrid" style="grid-template-columns:{col_template};">'
+    headers = ['담당자', '구분', f'{year}Y 합계', f'{month}월']
+    for ci, h in enumerate(headers, start=1):
+        html += f'<div class="dg-th" style="grid-column:{ci};grid-row:1;">{h}</div>'
+
+    r = 2
+    for mgr in managers:
+        rev_kpi_sum = sum(kpi.get((mgr,year,mm),{}).get('매출KPI') or 0 for mm in range(1,13))
+        gp_kpi_sum = sum(kpi.get((mgr,year,mm),{}).get('GPKPI') or 0 for mm in range(1,13))
+        rev_actual_sum = sum(actuals.get((mgr,year,mm),{}).get('매출',0) for mm in range(1,13))
+        gp_actual_sum = sum(actuals.get((mgr,year,mm),{}).get('GP',0) for mm in range(1,13))
+
+        cur_kpi = kpi.get((mgr,year,month), {})
+        cur_actual = actuals.get((mgr,year,month), {'매출':0,'GP':0})
+        rev_kpi_cur, gp_kpi_cur = cur_kpi.get('매출KPI'), cur_kpi.get('GPKPI')
+        rev_actual_cur, gp_actual_cur = cur_actual['매출'], cur_actual['GP']
+
+        rows = [
+            ('매출 KPI', fmt_amt(rev_kpi_sum), fmt_amt(rev_kpi_cur)),
+            ('GP KPI', fmt_amt(gp_kpi_sum), fmt_amt(gp_kpi_cur)),
+            ('매출 결과', money(rev_actual_sum), money(rev_actual_cur)),
+            ('GP 결과', money(gp_actual_sum), money(gp_actual_cur)),
+            ('매출 달성률(%)', fmt_pct(rev_actual_sum,rev_kpi_sum), fmt_pct(rev_actual_cur,rev_kpi_cur)),
+            ('GP 달성률(%)', fmt_pct(gp_actual_sum,gp_kpi_sum), fmt_pct(gp_actual_cur,gp_kpi_cur)),
+        ]
+        html += f'<div class="dg-group" style="grid-column:1;grid-row:{r} / {r+6};">{mgr}</div>'
+        for i, (label, sum_val, cur_val) in enumerate(rows):
+            rr = r + i
+            html += f'<div class="dg-cell" style="grid-column:2;grid-row:{rr};justify-content:flex-start;">{label}</div>'
+            html += f'<div class="dg-cell" style="grid-column:3;grid-row:{rr};">{sum_val}</div>'
+            html += f'<div class="dg-cell" style="grid-column:4;grid-row:{rr};">{cur_val}</div>'
+        r += 6
+
+    html += '</div></div>'
+    return html
+
 def filter_up_to_current_month(data_by_ym):
     """미래 월(아직 오지 않은 달) 시트는 대시보드 집계에서 제외."""
     today = date.today()
@@ -978,7 +1123,8 @@ if page=='🏠 메인 대시보드':
     if all_week_deals is None:
         st.markdown('<div class="card"><b>이번주 공구 현황</b><br><br><span class="chip">공구현황판을 업로드하면 표시됩니다</span></div>',unsafe_allow_html=True)
     else:
-        st.markdown(f'<span class="chip">{week_start.month}/{week_start.day}~{week_end.month}/{week_end.day}</span>',unsafe_allow_html=True)
+        week_total=len([d for d in all_week_deals if week_start<=d['start']<=week_end])
+        st.markdown(f'<span class="chip">{week_start.month}/{week_start.day}~{week_end.month}/{week_end.day}</span><span class="chip active">총 {week_total}건</span>',unsafe_allow_html=True)
         st.markdown(render_manager_week_cards_html(all_week_deals,week_start,week_end),unsafe_allow_html=True)
 
 elif page=='📅 공구 일정':
@@ -1161,6 +1307,27 @@ elif page=='👩 담당자별 매출':
             result={m:result.get(m,{'매출':0,'GP':0}) for m in managers}
         result_df=pd.DataFrame([{'담당자':m,'매출':money(v['매출']),'GP':money(v['GP'])} for m,v in result.items()])
         st.dataframe(result_df,use_container_width=True,hide_index=True)
+
+        st.markdown('<div class="section-title" style="font-size:1.1rem;">🎯 담당자별 KPI 달성 현황</div>',unsafe_allow_html=True)
+        st.markdown('<div class="help">매출/GP KPI는 별도 관리 목표치 문서 기준이며, 매출·GP 결과는 공구현황판 기준입니다. 결산자료는 사용하지 않습니다.</div>',unsafe_allow_html=True)
+        with st.expander('📁 KPI 목표치 문서 업로드 (담당자/구분/26Y 합계/1월~12월 형식)',expanded=False):
+            kpi_up=st.file_uploader('KPI 문서 업로드 (.xlsx)',type=['xlsx'],key='kpi_upload')
+            if kpi_up is not None:
+                save_kpi_upload(kpi_up)
+                st.success('KPI 문서 저장 완료 (다음부터 자동으로 반영됩니다)')
+        kpi=load_kpi_targets()
+        kpi_year=max({y for (y,m) in board_data} | {y for (_,y,m) in kpi}) if (board_data or kpi) else date.today().year
+        st.session_state.setdefault('kpi_month',1)
+        mnav1,mnav2,mnav3=st.columns([1,2,1])
+        with mnav1:
+            if st.button('◀ 이전달',use_container_width=True) and st.session_state['kpi_month']>1:
+                st.session_state['kpi_month']-=1
+        with mnav3:
+            if st.button('다음달 ▶',use_container_width=True) and st.session_state['kpi_month']<12:
+                st.session_state['kpi_month']+=1
+        with mnav2:
+            st.markdown(f'<div style="text-align:center;font-weight:900;padding-top:8px;">{kpi_year}년 {st.session_state["kpi_month"]}월</div>',unsafe_allow_html=True)
+        st.markdown(render_manager_kpi_table_html(board_data,kpi,kpi_year,st.session_state['kpi_month']),unsafe_allow_html=True)
 
 
 
