@@ -662,9 +662,13 @@ def load_kpi_targets():
         }
     return out
 
-def render_manager_kpi_table_html(board_data, kpi, year, month):
+def render_manager_kpi_full_table_html(board_data, kpi, year, manager_filter, month_filter):
+    """담당자/월 필터에 따라 분기별 전체 연간표(또는 단일월표)를 그린다. '전체' 담당자 선택 시 ALL 합계행 포함."""
     actuals = aggregate_by_manager_month(board_data)
-    managers = sorted(set([k[0] for k in kpi] + [mgr for (y,m),d in board_data.items() for mgr in d['by_manager']]))
+    all_managers = sorted(set([k[0] for k in kpi] + [mgr for (y, m), d in board_data.items() for mgr in d['by_manager']]))
+
+    show_all_months = (month_filter == '전체')
+    months = list(range(1, 13)) if show_all_months else [int(month_filter.replace('월', ''))]
 
     def fmt_amt(v): return money(v) if v else '-'
     def fmt_pct(actual, target):
@@ -673,39 +677,72 @@ def render_manager_kpi_table_html(board_data, kpi, year, month):
         color = '#2563eb' if pct >= 100 else '#dc2626'
         return f'<span style="color:{color};font-weight:900;">{pct:.2f}%</span>'
 
-    col_template = 'minmax(90px,1fr) minmax(120px,1.2fr) minmax(110px,1fr) minmax(110px,1fr)'
-    html = f'<div class="card dealgrid-wrap" style="padding:0;"><div class="dealgrid" style="grid-template-columns:{col_template};">'
-    headers = ['담당자', '구분', f'{year}Y 합계', f'{month}월']
-    for ci, h in enumerate(headers, start=1):
-        html += f'<div class="dg-th" style="grid-column:{ci};grid-row:1;">{h}</div>'
+    def kpi_lookup(mgrs, mm):
+        rev = sum((kpi.get((m, year, mm), {}).get('매출KPI') or 0) for m in mgrs) or None
+        gp = sum((kpi.get((m, year, mm), {}).get('GPKPI') or 0) for m in mgrs) or None
+        # 목표치가 하나도 없으면(전부 미설정) None 유지, 하나라도 있으면 합산치 사용
+        has_rev = any(kpi.get((m, year, mm), {}).get('매출KPI') for m in mgrs)
+        has_gp = any(kpi.get((m, year, mm), {}).get('GPKPI') for m in mgrs)
+        return (rev if has_rev else None), (gp if has_gp else None)
 
-    r = 2
-    for mgr in managers:
-        rev_kpi_sum = sum(kpi.get((mgr,year,mm),{}).get('매출KPI') or 0 for mm in range(1,13))
-        gp_kpi_sum = sum(kpi.get((mgr,year,mm),{}).get('GPKPI') or 0 for mm in range(1,13))
-        rev_actual_sum = sum(actuals.get((mgr,year,mm),{}).get('매출',0) for mm in range(1,13))
-        gp_actual_sum = sum(actuals.get((mgr,year,mm),{}).get('GP',0) for mm in range(1,13))
+    def actual_lookup(mgrs, mm):
+        rev = sum(actuals.get((m, year, mm), {}).get('매출', 0) for m in mgrs)
+        gp = sum(actuals.get((m, year, mm), {}).get('GP', 0) for m in mgrs)
+        return rev, gp
 
-        cur_kpi = kpi.get((mgr,year,month), {})
-        cur_actual = actuals.get((mgr,year,month), {'매출':0,'GP':0})
-        rev_kpi_cur, gp_kpi_cur = cur_kpi.get('매출KPI'), cur_kpi.get('GPKPI')
-        rev_actual_cur, gp_actual_cur = cur_actual['매출'], cur_actual['GP']
+    n_month_cols = len(months)
+    col_widths = 'minmax(64px,0.7fr) minmax(120px,1.1fr) minmax(105px,1fr) ' + ' '.join(['minmax(85px,0.85fr)'] * n_month_cols)
+    html = f'<div class="card dealgrid-wrap" style="padding:0;"><div class="dealgrid" style="grid-template-columns:{col_widths};">'
 
-        rows = [
-            ('매출 KPI', fmt_amt(rev_kpi_sum), fmt_amt(rev_kpi_cur)),
-            ('GP KPI', fmt_amt(gp_kpi_sum), fmt_amt(gp_kpi_cur)),
-            ('매출 결과', money(rev_actual_sum), money(rev_actual_cur)),
-            ('GP 결과', money(gp_actual_sum), money(gp_actual_cur)),
-            ('매출 달성률(%)', fmt_pct(rev_actual_sum,rev_kpi_sum), fmt_pct(rev_actual_cur,rev_kpi_cur)),
-            ('GP 달성률(%)', fmt_pct(gp_actual_sum,gp_kpi_sum), fmt_pct(gp_actual_cur,gp_kpi_cur)),
+    if show_all_months:
+        html += '<div class="dg-th" style="grid-column:1;grid-row:1 / 3;">담당자</div>'
+        html += '<div class="dg-th" style="grid-column:2;grid-row:1 / 3;">구분</div>'
+        html += f'<div class="dg-th" style="grid-column:3;grid-row:1 / 3;">{year}Y 합계</div>'
+        for qi in range(4):
+            start_col = 4 + qi * 3
+            html += f'<div class="dg-th" style="grid-column:{start_col} / {start_col+3};grid-row:1;">{qi+1}Q</div>'
+        for mi, mm in enumerate(months):
+            html += f'<div class="dg-th" style="grid-column:{4+mi};grid-row:2;">{mm}월</div>'
+        data_start_row = 3
+    else:
+        html += '<div class="dg-th" style="grid-column:1;grid-row:1;">담당자</div>'
+        html += '<div class="dg-th" style="grid-column:2;grid-row:1;">구분</div>'
+        html += f'<div class="dg-th" style="grid-column:3;grid-row:1;">{year}Y 합계</div>'
+        html += f'<div class="dg-th" style="grid-column:4;grid-row:1;">{months[0]}월</div>'
+        data_start_row = 2
+
+    def build_block(label, mgrs, start_row):
+        rev_kpi_year = sum((kpi.get((m, year, mm), {}).get('매출KPI') or 0) for m in mgrs for mm in range(1, 13)) or None
+        gp_kpi_year = sum((kpi.get((m, year, mm), {}).get('GPKPI') or 0) for m in mgrs for mm in range(1, 13)) or None
+        rev_actual_year = sum(actuals.get((m, year, mm), {}).get('매출', 0) for m in mgrs for mm in range(1, 13))
+        gp_actual_year = sum(actuals.get((m, year, mm), {}).get('GP', 0) for m in mgrs for mm in range(1, 13))
+        row_defs = [
+            ('매출 KPI', lambda mm: fmt_amt(kpi_lookup(mgrs, mm)[0]), fmt_amt(rev_kpi_year)),
+            ('GP KPI', lambda mm: fmt_amt(kpi_lookup(mgrs, mm)[1]), fmt_amt(gp_kpi_year)),
+            ('매출 결과', lambda mm: money(actual_lookup(mgrs, mm)[0]), money(rev_actual_year)),
+            ('GP 결과', lambda mm: money(actual_lookup(mgrs, mm)[1]), money(gp_actual_year)),
+            ('매출 달성률(%)', lambda mm: fmt_pct(actual_lookup(mgrs, mm)[0], kpi_lookup(mgrs, mm)[0]), fmt_pct(rev_actual_year, rev_kpi_year)),
+            ('GP 달성률(%)', lambda mm: fmt_pct(actual_lookup(mgrs, mm)[1], kpi_lookup(mgrs, mm)[1]), fmt_pct(gp_actual_year, gp_kpi_year)),
         ]
-        html += f'<div class="dg-group" style="grid-column:1;grid-row:{r} / {r+6};">{mgr}</div>'
-        for i, (label, sum_val, cur_val) in enumerate(rows):
-            rr = r + i
-            html += f'<div class="dg-cell" style="grid-column:2;grid-row:{rr};justify-content:flex-start;">{label}</div>'
-            html += f'<div class="dg-cell" style="grid-column:3;grid-row:{rr};">{sum_val}</div>'
-            html += f'<div class="dg-cell" style="grid-column:4;grid-row:{rr};">{cur_val}</div>'
-        r += 6
+        block_html = f'<div class="dg-group" style="grid-column:1;grid-row:{start_row} / {start_row+6};">{label}</div>'
+        for i, (rlabel, monthfn, yearval) in enumerate(row_defs):
+            rr = start_row + i
+            block_html += f'<div class="dg-cell" style="grid-column:2;grid-row:{rr};justify-content:flex-start;">{rlabel}</div>'
+            block_html += f'<div class="dg-cell" style="grid-column:3;grid-row:{rr};">{yearval}</div>'
+            for mi, mm in enumerate(months):
+                block_html += f'<div class="dg-cell" style="grid-column:{4+mi};grid-row:{rr};">{monthfn(mm)}</div>'
+        return block_html, start_row + 6
+
+    r = data_start_row
+    if manager_filter == '전체':
+        block_html, r = build_block('ALL', all_managers, r)
+        html += block_html
+        for mgr in all_managers:
+            block_html, r = build_block(mgr, [mgr], r)
+            html += block_html
+    else:
+        block_html, r = build_block(manager_filter, [manager_filter], r)
+        html += block_html
 
     html += '</div></div>'
     return html
@@ -1317,17 +1354,11 @@ elif page=='👩 담당자별 매출':
                 st.success('KPI 문서 저장 완료 (다음부터 자동으로 반영됩니다)')
         kpi=load_kpi_targets()
         kpi_year=max({y for (y,m) in board_data} | {y for (_,y,m) in kpi}) if (board_data or kpi) else date.today().year
-        st.session_state.setdefault('kpi_month',1)
-        mnav1,mnav2,mnav3=st.columns([1,2,1])
-        with mnav1:
-            if st.button('◀ 이전달',use_container_width=True) and st.session_state['kpi_month']>1:
-                st.session_state['kpi_month']-=1
-        with mnav3:
-            if st.button('다음달 ▶',use_container_width=True) and st.session_state['kpi_month']<12:
-                st.session_state['kpi_month']+=1
-        with mnav2:
-            st.markdown(f'<div style="text-align:center;font-weight:900;padding-top:8px;">{kpi_year}년 {st.session_state["kpi_month"]}월</div>',unsafe_allow_html=True)
-        st.markdown(render_manager_kpi_table_html(board_data,kpi,kpi_year,st.session_state['kpi_month']),unsafe_allow_html=True)
+        kpi_managers=sorted(set([k[0] for k in kpi] + [mgr for (y,m),d in board_data.items() for mgr in d['by_manager']]))
+        kf1,kf2=st.columns(2)
+        with kf1: kpi_manager_sel=st.selectbox('담당자 보기',['전체']+kpi_managers,key='kpi_manager_sel')
+        with kf2: kpi_month_sel=st.selectbox('월 보기',['전체']+[f'{m}월' for m in range(1,13)],key='kpi_month_sel')
+        st.markdown(render_manager_kpi_full_table_html(board_data,kpi,kpi_year,kpi_manager_sel,kpi_month_sel),unsafe_allow_html=True)
 
 
 
