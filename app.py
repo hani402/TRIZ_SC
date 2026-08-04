@@ -1,8 +1,10 @@
 from datetime import date, time, timedelta, datetime
 from zoneinfo import ZoneInfo
+import base64
 import io
 import os
 import re
+import requests
 import pandas as pd
 import streamlit as st
 import openpyxl
@@ -394,6 +396,73 @@ def ensure_data_dirs():
     os.makedirs(SETTLEMENT_DIR, exist_ok=True)
     os.makedirs(ARCHIVE_DIR, exist_ok=True)
 
+# ── GitHub 저장소를 영구 저장소로 사용 (Streamlit Cloud는 재시작 시 로컬 파일이 사라지므로) ──
+GITHUB_DATA_PREFIX = 'app_data'  # 레포 안에 저장될 폴더명 (data/와는 별개, gitignore 대상 아님)
+
+def _gh_secret(key):
+    try:
+        return st.secrets.get(key, '')
+    except Exception:
+        return ''
+
+GITHUB_OWNER = _gh_secret('github_owner')
+GITHUB_REPO = _gh_secret('github_repo')
+GITHUB_BRANCH = _gh_secret('github_branch') or 'main'
+GITHUB_TOKEN = _gh_secret('github_token')
+
+def github_configured():
+    return bool(GITHUB_OWNER and GITHUB_REPO and GITHUB_TOKEN)
+
+def _gh_headers():
+    return {'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github+json'}
+
+def github_download(repo_filename, local_path):
+    """GitHub 저장소(app_data/ 폴더)에서 파일을 받아 로컬에 저장. 성공하면 True."""
+    if not github_configured(): return False
+    url = f'https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{GITHUB_DATA_PREFIX}/{repo_filename}?ref={GITHUB_BRANCH}'
+    try:
+        resp = requests.get(url, headers=_gh_headers(), timeout=10)
+        if resp.status_code != 200: return False
+        raw = base64.b64decode(resp.json()['content'])
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        with open(local_path, 'wb') as f:
+            f.write(raw)
+        return True
+    except Exception:
+        return False
+
+def github_upload(repo_filename, local_path, message):
+    """로컬 파일을 GitHub 저장소(app_data/ 폴더)에 커밋. 성공하면 True."""
+    if not github_configured(): return False
+    url = f'https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{GITHUB_DATA_PREFIX}/{repo_filename}'
+    try:
+        with open(local_path, 'rb') as f:
+            content_b64 = base64.b64encode(f.read()).decode()
+        get_resp = requests.get(f'{url}?ref={GITHUB_BRANCH}', headers=_gh_headers(), timeout=10)
+        sha = get_resp.json().get('sha') if get_resp.status_code == 200 else None
+        payload = {'message': message, 'content': content_b64, 'branch': GITHUB_BRANCH}
+        if sha: payload['sha'] = sha
+        put_resp = requests.put(url, headers=_gh_headers(), json=payload, timeout=15)
+        return put_resp.status_code in (200, 201)
+    except Exception:
+        return False
+
+SYNCED_FILES = {
+    'gonggu_board.xlsx': lambda: BOARD_PATH,
+    'gonggu_board_2025_uploaded.xlsx': lambda: ARCHIVE_BOARD_PATH,
+    'kpi_source.xlsx': lambda: KPI_SOURCE_PATH,
+    'kpi_targets.csv': lambda: KPI_PATH,
+}
+
+def ensure_synced_from_github():
+    """세션당 1회, GitHub에 저장된 최신 파일들을 로컬로 받아온다."""
+    if not github_configured(): return
+    if st.session_state.get('_github_synced'): return
+    ensure_data_dirs()
+    for repo_filename, path_fn in SYNCED_FILES.items():
+        github_download(repo_filename, path_fn())
+    st.session_state['_github_synced'] = True
+
 def header_key(v):
     """헤더 셀 값에서 줄바꿈/공백 제거 후 비교용 키로 변환."""
     if v is None: return ''
@@ -511,11 +580,17 @@ def save_board_upload(uploaded_file):
     ensure_data_dirs()
     with open(BOARD_PATH, 'wb') as f:
         f.write(uploaded_file.getbuffer())
+    if github_configured():
+        return github_upload('gonggu_board.xlsx', BOARD_PATH, '공구현황판 업데이트')
+    return None
 
 def save_archive_board_upload(uploaded_file):
     ensure_data_dirs()
     with open(ARCHIVE_BOARD_PATH, 'wb') as f:
         f.write(uploaded_file.getbuffer())
+    if github_configured():
+        return github_upload('gonggu_board_2025_uploaded.xlsx', ARCHIVE_BOARD_PATH, '아카이브 공구현황판 업데이트')
+    return None
 
 def save_settlement_upload(uploaded_file):
     ensure_data_dirs()
@@ -601,6 +676,9 @@ def save_kpi_upload(uploaded_file):
     ensure_data_dirs()
     with open(KPI_SOURCE_PATH, 'wb') as f:
         f.write(uploaded_file.getbuffer())
+    if github_configured():
+        return github_upload('kpi_source.xlsx', KPI_SOURCE_PATH, 'KPI 목표치 문서 업데이트')
+    return None
 
 def parse_kpi_source_file(path):
     """'담당자/구분/26Y 합계/1월.../12월' 형식의 KPI 문서를 dict[(담당자,연도,월)] -> {'매출KPI':..,'GPKPI':..} 로 변환."""
@@ -1077,6 +1155,8 @@ def render_gantt_calendar_html(week_start, week_end, deals):
 manager_df=pd.DataFrame([{"담당자":"매니저 A","공구수":8,"매출":230_000_000,"GP":18_600_000,"KPI":250_000_000},{"담당자":"매니저 B","공구수":6,"매출":180_000_000,"GP":13_500_000,"KPI":220_000_000},{"담당자":"매니저 C","공구수":4,"매출":120_000_000,"GP":8_640_000,"KPI":180_000_000}])
 manager_df['달성률']=(manager_df['매출']/manager_df['KPI']*100).round(1)
 
+ensure_synced_from_github()
+
 NAV_STRUCTURE={'🏠 메인 대시보드':['🏠 대시보드','📅 공구 일정','👩 담당자별 매출','🔍 히스토리 검색'],'⚙️ 자동 프로그램':['💰 매출 집계','🎁 이벤트 추첨','📢 공구 알람']}
 
 with st.sidebar:
@@ -1124,11 +1204,18 @@ if page=='🏠 메인 대시보드':
     with st.expander('📁 공구현황판 업로드',expanded=not os.path.exists(BOARD_PATH)):
         board_up=st.file_uploader('공구현황판 업로드 (여러 월 시트가 포함된 워크북 1개)',type=['xlsx'],key='board_upload')
         if board_up is not None:
-            save_board_upload(board_up)
-            st.success('공구현황판 저장 완료 (다음부터는 자동으로 반영됩니다)')
+            gh_ok=save_board_upload(board_up)
+            if gh_ok is True:
+                st.success('공구현황판 저장 완료 (GitHub에도 저장되어 재배포/재시작 후에도 유지됩니다)')
+            elif gh_ok is False:
+                st.warning('로컬에는 저장했지만 GitHub 저장에 실패했습니다. 앱이 재시작되면 사라질 수 있어요. GitHub 연동 설정을 확인해주세요.')
+            else:
+                st.success('공구현황판 저장 완료')
+                st.caption('※ GitHub 연동이 설정되지 않아 이 세션에서만 유지됩니다. 재시작 후에도 유지하려면 GitHub 연동을 설정해주세요.')
         if os.path.exists(BOARD_PATH):
             updated_dt=datetime.fromtimestamp(os.path.getmtime(BOARD_PATH),tz=ZoneInfo('Asia/Seoul'))
-            st.markdown(f'<span class="chip active">📌 현재 저장된 파일 있음</span><span class="chip">🕒 마지막 업데이트 : {updated_dt.strftime("%Y-%m-%d %H:%M")}</span>',unsafe_allow_html=True)
+            gh_chip='<span class="chip active">🔗 GitHub 연동됨</span>' if github_configured() else '<span class="chip">⚠️ GitHub 미연동</span>'
+            st.markdown(f'<span class="chip active">📌 현재 저장된 파일 있음</span><span class="chip">🕒 마지막 업데이트 : {updated_dt.strftime("%Y-%m-%d %H:%M")}</span>{gh_chip}',unsafe_allow_html=True)
         else:
             st.markdown('<span class="chip">아직 저장된 파일이 없습니다</span>',unsafe_allow_html=True)
 
@@ -1350,8 +1437,13 @@ elif page=='👩 담당자별 매출':
         with st.expander('📁 KPI 목표치 문서 업로드 (담당자/구분/26Y 합계/1월~12월 형식)',expanded=False):
             kpi_up=st.file_uploader('KPI 문서 업로드 (.xlsx)',type=['xlsx'],key='kpi_upload')
             if kpi_up is not None:
-                save_kpi_upload(kpi_up)
-                st.success('KPI 문서 저장 완료 (다음부터 자동으로 반영됩니다)')
+                gh_ok=save_kpi_upload(kpi_up)
+                if gh_ok is True:
+                    st.success('KPI 문서 저장 완료 (GitHub에도 저장되어 계속 유지됩니다)')
+                elif gh_ok is False:
+                    st.warning('로컬에는 저장했지만 GitHub 저장에 실패했습니다.')
+                else:
+                    st.success('KPI 문서 저장 완료 (GitHub 미연동 — 이 세션에서만 유지됩니다)')
         kpi=load_kpi_targets()
         kpi_year=max({y for (y,m) in board_data} | {y for (_,y,m) in kpi}) if (board_data or kpi) else date.today().year
         kpi_managers=sorted(set([k[0] for k in kpi] + [mgr for (y,m),d in board_data.items() for mgr in d['by_manager']]))
@@ -1370,8 +1462,13 @@ elif page=='🔍 히스토리 검색':
         st.caption('※ 매일 바뀌는 최신 공구현황판과는 별도로 저장돼요. 25년처럼 더 이상 안 바뀌는 과거 자료를 여기에 올려주세요.')
         archive_up=st.file_uploader('과거 공구현황판 업로드 (.xlsx)',type=['xlsx'],key='archive_upload')
         if archive_up is not None:
-            save_archive_board_upload(archive_up)
-            st.success('아카이브 저장 완료')
+            gh_ok=save_archive_board_upload(archive_up)
+            if gh_ok is True:
+                st.success('아카이브 저장 완료 (GitHub에도 저장되어 계속 유지됩니다)')
+            elif gh_ok is False:
+                st.warning('로컬에는 저장했지만 GitHub 저장에 실패했습니다.')
+            else:
+                st.success('아카이브 저장 완료 (GitHub 미연동 — 이 세션에서만 유지됩니다)')
 
     board_exists=os.path.exists(BOARD_PATH)
     archive_exists=os.path.exists(ARCHIVE_BOARD_PATH)
