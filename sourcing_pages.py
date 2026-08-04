@@ -444,6 +444,16 @@ def render_proposal_calc_page():
         st.warning('이 상품에 등록된 옵션이 없습니다.')
         return
 
+    product_full = repo.get_product(product_sel['product_id'])['product']
+    st.markdown('<div class="section-title" style="font-size:1.05rem;">📌 업체 제공 가능 수수료율 (참고)</div>', unsafe_allow_html=True)
+    ref_html = f'<div class="field-grid"><div class="field-item"><b>상품 전체 기준</b><span>{_pct(product_full["vendor_commission_rate"])}</span></div>'
+    for o in options:
+        ref_rate = o['vendor_commission_rate'] if o['vendor_commission_rate'] is not None else product_full['vendor_commission_rate']
+        ref_html += f'<div class="field-item"><b>{o["option_name"]}</b><span>{_pct(ref_rate)}</span></div>'
+    ref_html += '</div>'
+    st.markdown(ref_html, unsafe_allow_html=True)
+    st.caption('※ 소싱 등록 시 업체가 제공 가능하다고 밝힌 수수료율입니다. 아래 "벤더 수수료율"을 입력할 때 참고하세요 (이 값을 넘으면 업체와 재협의가 필요할 수 있어요).')
+
     h1, h2, h3 = st.columns(3)
     with h1:
         sales_manager = st.text_input('영업 담당자 *')
@@ -460,6 +470,9 @@ def render_proposal_calc_page():
 
     event_details = st.text_area('이벤트 내용', height=70)
     notes = st.text_area('특이사항', height=70)
+
+    if product_full['vendor_commission_rate'] and vendor_commission_rate > product_full['vendor_commission_rate']:
+        st.warning(f'⚠️ 입력하신 벤더 수수료율({_pct(vendor_commission_rate)})이 업체가 제공 가능하다고 밝힌 수수료율({_pct(product_full["vendor_commission_rate"])})보다 높습니다. 업체와 재협의가 필요할 수 있어요.')
 
     st.markdown('<div class="section-title" style="font-size:1.1rem;">옵션별 계산 결과</div>', unsafe_allow_html=True)
     option_inputs = {}
