@@ -69,9 +69,10 @@ div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[da
 .deal-table tr.daytotal td:first-child{border-left:3px solid #d97706}
 .dealgrid-wrap{overflow-x:auto;}
 .dealgrid{display:grid;border:1px solid #eef2f7;border-radius:8px;overflow:hidden;background:#fff;font-size:14.5px;}
-.dg-cell{padding:11px 12px;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;}
-.dg-th{background:#f8fafc;color:#475569;font-weight:800;font-size:13.5px;padding:12px 10px;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
-.dg-group{background:#f0fdf4;color:#166534;font-weight:800;text-align:center;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;padding:11px 12px;}
+.dg-cell{padding:11px 12px;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:400;color:#334155;}
+.dg-cell.dg-label{justify-content:flex-start;color:#64748b;font-weight:500;font-size:13px;}
+.dg-th{background:#f8fafc;color:#475569;font-weight:700;font-size:13px;padding:12px 10px;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
+.dg-group{background:#f8fafc;color:#0f172a;font-weight:700;text-align:center;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:center;padding:11px 12px;}
 .dg-daytotal{background:#fffbeb;color:#92400e;font-weight:800;}
 .dg-daytotal.first{border-left:3px solid #d97706;}
 .dg-total{background:#eff6ff;color:#1e40af;font-weight:800;}
@@ -84,7 +85,7 @@ div[data-testid="stSelectbox"] > div,div[data-testid="stTextInput"] > div,div[da
 .rank-table th{background:#f8fafc;color:#475569;font-weight:800;padding:11px 12px;border:1px solid #eef2f7;text-align:left}
 .rank-table th.num{text-align:right}
 .rank-table td{padding:12px;border:1px solid #eef2f7;vertical-align:middle}
-.rank-table td.num{text-align:right;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
+.rank-table td.num{text-align:right;font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums}
 .rank-table td.rank-badge{width:34px;text-align:center;color:#94a3b8;font-weight:800;font-size:12.5px}
 .rank-table td.bar-cell{width:34%}
 .rank-bar-bg{height:8px;background:#eef2f7;border-radius:4px;overflow:hidden}
@@ -753,7 +754,7 @@ def render_manager_kpi_full_table_html(board_data, kpi, year, manager_filter, mo
         if not target: return '-'
         pct = actual / target * 100
         color = '#2563eb' if pct >= 100 else '#dc2626'
-        return f'<span style="color:{color};font-weight:900;">{pct:.2f}%</span>'
+        return f'<span style="color:{color};font-weight:700;">{pct:.2f}%</span>'
 
     def kpi_lookup(mgrs, mm):
         rev = sum((kpi.get((m, year, mm), {}).get('매출KPI') or 0) for m in mgrs) or None
@@ -805,7 +806,7 @@ def render_manager_kpi_full_table_html(board_data, kpi, year, manager_filter, mo
         block_html = f'<div class="dg-group" style="grid-column:1;grid-row:{start_row} / {start_row+6};">{label}</div>'
         for i, (rlabel, monthfn, yearval) in enumerate(row_defs):
             rr = start_row + i
-            block_html += f'<div class="dg-cell" style="grid-column:2;grid-row:{rr};justify-content:flex-start;">{rlabel}</div>'
+            block_html += f'<div class="dg-cell dg-label" style="grid-column:2;grid-row:{rr};">{rlabel}</div>'
             block_html += f'<div class="dg-cell" style="grid-column:3;grid-row:{rr};">{yearval}</div>'
             for mi, mm in enumerate(months):
                 block_html += f'<div class="dg-cell" style="grid-column:{4+mi};grid-row:{rr};">{monthfn(mm)}</div>'
@@ -1157,13 +1158,23 @@ manager_df['달성률']=(manager_df['매출']/manager_df['KPI']*100).round(1)
 
 ensure_synced_from_github()
 
+# ── 신규 기능: 소싱 상품 등록/제안 계산 (feature/product-proposal-workflow) ──
+# 문제 발생 시 아래 플래그만 False로 바꾸면 메뉴가 완전히 숨겨집니다 (코드 삭제 불필요).
+ENABLE_SOURCING_MODULE = True
+if ENABLE_SOURCING_MODULE:
+    import sourcing_pages
+    from sourcing_db import SOURCING_DB_PATH
+    SYNCED_FILES['sourcing.db'] = lambda: SOURCING_DB_PATH
+
 NAV_STRUCTURE={'🏠 메인 대시보드':['🏠 대시보드','📅 공구 일정','👩 담당자별 매출','🔍 히스토리 검색'],'⚙️ 자동 프로그램':['💰 매출 집계','🎁 이벤트 추첨','📢 공구 알람']}
+if ENABLE_SOURCING_MODULE:
+    NAV_STRUCTURE['🧪 소싱·제안']=['🧪 소싱 상품 등록','🧪 소싱 상품 관리','🧪 공구 제안 계산','🧪 저장된 제안']
 
 with st.sidebar:
     st.markdown('<div class="sidebar-badge"><div class="dot">📊</div><div class="txt"><b>TRIZ 영업실</b><span>업무 프로그램</span></div></div>',unsafe_allow_html=True)
 
     st.session_state.setdefault('nav_major','🏠 메인 대시보드')
-    maj_cols=st.columns(2)
+    maj_cols=st.columns(len(NAV_STRUCTURE))
     for i,maj in enumerate(NAV_STRUCTURE.keys()):
         with maj_cols[i]:
             is_active=st.session_state['nav_major']==maj
@@ -1516,3 +1527,15 @@ elif page=='📢 공구 알람':
             st.text_area('📋 공구 알람 (전체 선택해서 복사하세요)',value=alarm_text,height=440)
             st.download_button('📥 텍스트 파일로 다운로드',data=alarm_text.encode('utf-8'),file_name=f'공구알람_{sheet_name}.txt',mime='text/plain')
             st.caption('※ "일정" 날짜는 시트 이름(예: "0713-15 ...")에서 자동으로 인식하며, 연도는 현재 연도로 자동 적용됩니다. 예전 공구의 경우 요일이 다르게 나올 수 있어요.')
+
+elif ENABLE_SOURCING_MODULE and page=='🧪 소싱 상품 등록':
+    sourcing_pages.render_product_register_page()
+
+elif ENABLE_SOURCING_MODULE and page=='🧪 소싱 상품 관리':
+    sourcing_pages.render_product_manage_page()
+
+elif ENABLE_SOURCING_MODULE and page=='🧪 공구 제안 계산':
+    sourcing_pages.render_proposal_calc_page()
+
+elif ENABLE_SOURCING_MODULE and page=='🧪 저장된 제안':
+    sourcing_pages.render_saved_proposals_page()
