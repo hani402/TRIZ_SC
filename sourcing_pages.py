@@ -177,17 +177,23 @@ def render_product_manage_page():
                     st.caption(f'수수료율: {_pct(r["vendor_commission_rate"])}')
                     st.caption(f'수정일: {r["updated_at"][:10]}')
                 with cC:
-                    bcol1, bcol2, bcol3 = st.columns(3)
+                    bcol1, bcol2, bcol3, bcol4 = st.columns(4)
                     with bcol1:
                         if st.button('상세', key=f'view_{r["product_id"]}'):
                             st.session_state['pm_detail_id'] = r['product_id']
+                            st.session_state.pop('pm_edit_id', None)
                             st.rerun()
                     with bcol2:
+                        if st.button('수정', key=f'edit_{r["product_id"]}'):
+                            st.session_state['pm_edit_id'] = r['product_id']
+                            st.session_state.pop('pm_detail_id', None)
+                            st.rerun()
+                    with bcol3:
                         if st.button('복제', key=f'dup_{r["product_id"]}'):
                             new_id = repo.duplicate_product(r['product_id'], user=r['sourcing_manager'])
                             st.success(f'복제 완료 (신규 ID: {new_id})')
                             st.rerun()
-                    with bcol3:
+                    with bcol4:
                         if st.button('사용중지', key=f'deact_{r["product_id"]}'):
                             repo.set_product_active(r['product_id'], False, user=r['sourcing_manager'])
                             st.success('사용 중지로 변경되었습니다.')
@@ -266,6 +272,145 @@ def render_product_manage_page():
                 del st.session_state['pm_detail_id']
                 st.rerun()
 
+    if st.session_state.get('pm_edit_id'):
+        _render_product_edit_form(st.session_state['pm_edit_id'])
+
+
+def _render_product_edit_form(product_id):
+    detail = repo.get_product(product_id)
+    if not detail:
+        st.warning('상품을 찾을 수 없습니다.')
+        return
+    p = detail['product']
+    st.markdown('---')
+    st.markdown(f'<div class="section-title" style="font-size:1.1rem;">✏️ 수정: {p["product_name"]}</div>', unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        vendor_name = st.text_input('업체명 *', value=p['vendor_name'], key='ed_vendor')
+        brand_name = st.text_input('브랜드명 *', value=p['brand_name'], key='ed_brand')
+        product_name = st.text_input('상품명 *', value=p['product_name'], key='ed_pname')
+        category = st.text_input('카테고리', value=p['category'] or '', key='ed_cat')
+        sourcing_manager = st.text_input('소싱 담당자 *', value=p['sourcing_manager'], key='ed_mgr')
+        product_status = st.selectbox('상품 상태', PRODUCT_STATUSES, index=PRODUCT_STATUSES.index(p['product_status']) if p['product_status'] in PRODUCT_STATUSES else 0, key='ed_status')
+    with c2:
+        vendor_contact_name = st.text_input('업체 담당자명', value=p['vendor_contact_name'] or '', key='ed_cname')
+        vendor_contact_phone = st.text_input('업체 연락처', value=p['vendor_contact_phone'] or '', key='ed_cphone')
+        vendor_contact_email = st.text_input('업체 이메일', value=p['vendor_contact_email'] or '', key='ed_cemail')
+        image_url = st.text_input('이미지 URL', value=p['image_url'] or '', key='ed_img')
+        product_link = st.text_input('상품 링크', value=p['product_link'] or '', key='ed_link')
+        expiry_info = st.text_input('제조일 / 소비기한', value=p['expiry_info'] or '', key='ed_expiry')
+
+    with st.expander('📦 거래 및 배송 조건', expanded=False):
+        d1, d2 = st.columns(2)
+        with d1:
+            vendor_commission_rate = st.number_input('업체 제안 가능 수수료율 (%)', min_value=0.0, max_value=100.0, value=float(p['vendor_commission_rate'] or 0)*100, step=0.5, key='ed_vc') / 100
+            vat_included = st.checkbox('부가세 포함', value=bool(p['vat_included']), key='ed_vat')
+            base_shipping_fee = st.number_input('기본 배송비', min_value=0, value=int(p['base_shipping_fee'] or 0), step=500, key='ed_base_ship')
+            jeju_shipping_fee = st.number_input('제주 배송비(추가)', min_value=0, value=int(p['jeju_shipping_fee'] or 0), step=500, key='ed_jeju')
+            remote_shipping_fee = st.number_input('도서산간 배송비(추가)', min_value=0, value=int(p['remote_shipping_fee'] or 0), step=500, key='ed_remote')
+            free_shipping_condition = st.text_input('무료배송 조건', value=p['free_shipping_condition'] or '', key='ed_freeship')
+        with d2:
+            shipping_lead_time = st.text_input('출고 리드타임', value=p['shipping_lead_time'] or '', key='ed_lead')
+            return_address = st.text_area('반품 및 교환 주소', value=p['return_address'] or '', height=70, key='ed_return')
+            settlement_terms = st.text_input('정산 조건', value=p['settlement_terms'] or '', key='ed_settle')
+            inventory_notes = st.text_area('재고 관련 특이사항', value=p['inventory_notes'] or '', height=70, key='ed_inv')
+            gh_options = ['', 'O', 'X']
+            groupbuy_history = st.selectbox('공동구매 진행이력', gh_options, index=gh_options.index(p['groupbuy_history']) if p['groupbuy_history'] in gh_options else 0, key='ed_gh')
+
+    with st.expander('📝 소구포인트 / 샘플정책 / 기타', expanded=False):
+        appeal_points = st.text_area('소구포인트 및 기타 특이사항', value=p['appeal_points'] or '', height=90, key='ed_appeal')
+        sample_policy_notes = st.text_area('샘플 정책 / 셀러 허들 / 이벤트', value=p['sample_policy_notes'] or '', height=90, key='ed_sample')
+        notes = st.text_area('특이사항', value=p['notes'] or '', height=70, key='ed_notes')
+
+    st.markdown('<div class="section-title" style="font-size:1.1rem;">옵션 구성</div>', unsafe_allow_html=True)
+    edit_key = f'sourcing_edit_options_{product_id}'
+    if edit_key not in st.session_state:
+        st.session_state[edit_key] = [
+            {'option_name': o['option_name'], 'composition': o['composition'] or '', 'retail_price': o['retail_price'],
+             'groupbuy_price': o['groupbuy_price'], 'supply_price': o['supply_price'],
+             'vendor_commission_rate': o['vendor_commission_rate'] or 0.0, 'shipping_fee': o['shipping_fee'] or 0, 'notes': o['notes'] or ''}
+            for o in detail['options']
+        ] or [{'option_name': '', 'composition': '', 'retail_price': 0, 'groupbuy_price': 0, 'supply_price': 0, 'vendor_commission_rate': 0.0, 'shipping_fee': 0, 'notes': ''}]
+    rows = st.session_state[edit_key]
+
+    for i, opt in enumerate(rows):
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        oc1, oc2, oc3 = st.columns(3)
+        with oc1:
+            opt['option_name'] = st.text_input('옵션명 *', value=opt['option_name'], key=f'ed_opt_name_{product_id}_{i}')
+            opt['composition'] = st.text_input('상세 구성', value=opt['composition'], key=f'ed_opt_comp_{product_id}_{i}')
+        with oc2:
+            opt['retail_price'] = st.number_input('정상가 *', min_value=0, value=int(opt['retail_price']), step=1000, key=f'ed_opt_retail_{product_id}_{i}')
+            opt['groupbuy_price'] = st.number_input('공구가 *', min_value=0, value=int(opt['groupbuy_price']), step=1000, key=f'ed_opt_gb_{product_id}_{i}')
+            opt['supply_price'] = st.number_input('공급가 *', min_value=0, value=int(opt['supply_price']), step=1000, key=f'ed_opt_supply_{product_id}_{i}')
+        with oc3:
+            opt['vendor_commission_rate'] = st.number_input('업체 제공 가능 수수료율 (%)', min_value=0.0, max_value=100.0, value=float(opt['vendor_commission_rate'])*100, step=0.5, key=f'ed_opt_vc_{product_id}_{i}') / 100
+            opt['shipping_fee'] = st.number_input('배송비', min_value=0, value=int(opt['shipping_fee']), step=500, key=f'ed_opt_ship_{product_id}_{i}')
+            opt['notes'] = st.text_input('비고', value=opt['notes'], key=f'ed_opt_notes_{product_id}_{i}')
+        if opt['retail_price']:
+            dr = calc_discount_rate(opt['retail_price'], opt['groupbuy_price'])
+            st.caption(f'할인율(자동계산): {_pct(dr)}')
+            if opt['groupbuy_price'] > opt['retail_price']:
+                st.error('공구가는 정상가보다 클 수 없습니다.')
+        if len(rows) > 1:
+            if st.button('이 옵션 삭제', key=f'ed_opt_del_{product_id}_{i}'):
+                rows.pop(i)
+                st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    if st.button('➕ 옵션 추가', key=f'ed_opt_add_{product_id}'):
+        rows.append({'option_name': '', 'composition': '', 'retail_price': 0, 'groupbuy_price': 0, 'supply_price': 0, 'vendor_commission_rate': 0.0, 'shipping_fee': 0, 'notes': ''})
+        st.rerun()
+
+    st.markdown('---')
+    ec1, ec2 = st.columns(2)
+    with ec1:
+        if st.button('💾 수정 저장', type='primary', key=f'ed_save_{product_id}'):
+            errors = []
+            if not vendor_name: errors.append('업체명을 입력해주세요.')
+            if not brand_name: errors.append('브랜드명을 입력해주세요.')
+            if not product_name: errors.append('상품명을 입력해주세요.')
+            if not sourcing_manager: errors.append('소싱 담당자를 입력해주세요.')
+            valid_options = [o for o in rows if o['option_name'].strip()]
+            if not valid_options: errors.append('옵션을 최소 1개 이상 입력해주세요.')
+            for o in valid_options:
+                if not o['retail_price'] or o['retail_price'] <= 0:
+                    errors.append(f'"{o["option_name"]}" 옵션: 정상가는 0보다 커야 합니다.')
+                if o['groupbuy_price'] > o['retail_price']:
+                    errors.append(f'"{o["option_name"]}" 옵션: 공구가는 정상가보다 클 수 없습니다.')
+                if o['supply_price'] < 0:
+                    errors.append(f'"{o["option_name"]}" 옵션: 공급가는 음수가 될 수 없습니다.')
+            dup = repo.check_duplicate_product(vendor_name, brand_name, product_name, exclude_id=product_id)
+            if dup:
+                st.warning('⚠️ 동일한 업체·브랜드·상품명을 가진 다른 상품이 이미 있습니다.')
+
+            if errors:
+                for e in errors: st.error(e)
+            else:
+                data = dict(
+                    vendor_name=vendor_name, brand_name=brand_name, product_name=product_name, category=category,
+                    sourcing_manager=sourcing_manager, vendor_contact_name=vendor_contact_name,
+                    vendor_contact_phone=vendor_contact_phone, vendor_contact_email=vendor_contact_email,
+                    product_status=product_status, vendor_commission_rate=vendor_commission_rate, vat_included=vat_included,
+                    base_shipping_fee=base_shipping_fee, jeju_shipping_fee=jeju_shipping_fee, remote_shipping_fee=remote_shipping_fee,
+                    free_shipping_condition=free_shipping_condition, shipping_lead_time=shipping_lead_time,
+                    return_address=return_address, settlement_terms=settlement_terms, inventory_notes=inventory_notes,
+                    image_url=image_url, product_link=product_link, expiry_info=expiry_info, groupbuy_history=groupbuy_history,
+                    appeal_points=appeal_points, sample_policy_notes=sample_policy_notes, notes=notes,
+                )
+                repo.update_product(product_id, data, user=sourcing_manager)
+                repo.replace_product_options(product_id, valid_options)
+                st.success('수정되었습니다.')
+                del st.session_state[edit_key]
+                del st.session_state['pm_edit_id']
+                st.rerun()
+    with ec2:
+        if st.button('취소', key=f'ed_cancel_{product_id}'):
+            del st.session_state[edit_key]
+            del st.session_state['pm_edit_id']
+            st.rerun()
+
 
 # ── 3. 공구 제안 계산 ────────────────────────────────────────────────────
 def render_proposal_calc_page():
@@ -274,7 +419,14 @@ def render_proposal_calc_page():
 
     brands = repo.list_distinct_brands_for_proposal()
     if not brands:
-        st.info('제안 가능한 상품이 없습니다. "제안 가능" 또는 "구성안 확정" 상태의 상품을 먼저 등록해주세요.')
+        any_rows, any_total = repo.search_products(page=1, page_size=5)
+        if any_total == 0:
+            st.info('아직 등록된 상품이 없습니다. "소싱 상품 등록"에서 먼저 상품을 등록해주세요.')
+        else:
+            st.warning('제안 가능한 상품이 없습니다. 아래 상품들이 등록되어 있지만, 상태가 "제안 가능" 또는 "구성안 확정"이 아니에요.')
+            for r in any_rows:
+                st.markdown(f'- **{r["product_name"]}** ({r["vendor_name"]}) — 현재 상태: `{r["product_status"]}`')
+            st.caption('"소싱 상품 관리"에서 해당 상품의 "수정" 버튼을 눌러 상태를 바꿔주세요.')
         return
 
     c1, c2 = st.columns(2)
