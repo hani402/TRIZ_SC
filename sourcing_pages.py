@@ -480,11 +480,10 @@ def render_proposal_calc_page():
     for o in options:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown(f'**{o["option_name"]}** ({o.get("composition") or "-"})')
-        oc1, oc2, oc3 = st.columns(3)
-        with oc1:
-            st.caption(f'정상가 {_money(o["retail_price"])} · 공구가 {_money(o["groupbuy_price"])}')
-            dr = calc_discount_rate(o['retail_price'], o['groupbuy_price'])
-            st.caption(f'할인율 {_pct(dr)} · 공급가 {_money(o["supply_price"])}')
+        dr = calc_discount_rate(o['retail_price'], o['groupbuy_price'])
+        st.caption(f'정상가 {_money(o["retail_price"])} · 할인율 {_pct(dr)}')
+
+        oc2, oc3 = st.columns(2)
         with oc2:
             qty = st.number_input('예상 판매 수량', min_value=0, value=0, step=10, key=f'qty_{o["option_id"]}')
         with oc3:
@@ -492,11 +491,25 @@ def render_proposal_calc_page():
 
         result = calc_option_result(o['groupbuy_price'], o['supply_price'], seller_commission_rate,
                                      vendor_commission_rate, pg_fee_rate, add_cost, qty)
-        rc1, rc2, rc3, rc4 = st.columns(4)
-        rc1.metric('셀러 지급액', _money(result['seller_payment']))
-        rc2.metric('벤더 지급액', _money(result['vendor_payment']))
-        rc3.metric('회사 GP', _money(result['company_gp']))
-        rc4.metric('GP율', _pct(result['company_gp_rate']))
+
+        flow_rows = [
+            ('공구판매가 (고객 결제금액)', o['groupbuy_price'], False),
+            ('(-) 공급가 (우리가 받은 원가)', o['supply_price'], True),
+            ('(-) 셀러 지급액', result['seller_payment'], True),
+            ('(-) 벤더 지급액', result['vendor_payment'], True),
+            ('(-) PG 수수료', result['pg_fee'], True),
+            ('(-) 추가 비용', add_cost, True),
+        ]
+        flow_html = '<div class="card" style="background:#f8fafc;padding:14px 16px;margin-top:8px;">'
+        for label, amt, is_deduction in flow_rows:
+            color = '#dc2626' if is_deduction else '#0f172a'
+            flow_html += f'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13.5px;"><span style="color:#64748b;">{label}</span><span style="color:{color};font-weight:700;">{_money(amt)}</span></div>'
+        flow_html += (f'<div style="display:flex;justify-content:space-between;padding:8px 0 2px;margin-top:6px;border-top:2px solid #cbd5e1;font-size:15px;">'
+                      f'<span style="font-weight:800;color:#0f172a;">= 회사가 남기는 돈 (GP)</span>'
+                      f'<span style="font-weight:900;color:#2563eb;">{_money(result["company_gp"])} ({_pct(result["company_gp_rate"])})</span></div>')
+        flow_html += '</div>'
+        st.markdown(flow_html, unsafe_allow_html=True)
+
         st.markdown('</div>', unsafe_allow_html=True)
 
         option_inputs[o['option_id']] = {'qty': qty, 'add_cost': add_cost}
