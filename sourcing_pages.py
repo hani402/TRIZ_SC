@@ -445,14 +445,18 @@ def render_proposal_calc_page():
         return
 
     product_full = repo.get_product(product_sel['product_id'])['product']
-    st.markdown('<div class="section-title" style="font-size:1.05rem;">📌 업체 제공 가능 수수료율 (참고)</div>', unsafe_allow_html=True)
-    ref_html = f'<div class="field-grid"><div class="field-item"><b>상품 전체 기준</b><span>{_pct(product_full["vendor_commission_rate"])}</span></div>'
-    for o in options:
-        ref_rate = o['vendor_commission_rate'] if o['vendor_commission_rate'] is not None else product_full['vendor_commission_rate']
-        ref_html += f'<div class="field-item"><b>{o["option_name"]}</b><span>{_pct(ref_rate)}</span></div>'
-    ref_html += '</div>'
-    st.markdown(ref_html, unsafe_allow_html=True)
-    st.caption('※ 소싱 등록 시 업체가 제공 가능하다고 밝힌 수수료율입니다. 아래 "벤더 수수료율"을 입력할 때 참고하세요 (이 값을 넘으면 업체와 재협의가 필요할 수 있어요).')
+
+    show_gp = st.toggle('💰 회사 GP·공급가·수수료 참고값 표시 (내부 계산용 — 셀러/벤더에게 화면 공유 시에는 꺼주세요)', value=False)
+
+    if show_gp:
+        st.markdown('<div class="section-title" style="font-size:1.05rem;">📌 업체 제공 가능 수수료율 (참고)</div>', unsafe_allow_html=True)
+        ref_html = f'<div class="field-grid"><div class="field-item"><b>상품 전체 기준</b><span>{_pct(product_full["vendor_commission_rate"])}</span></div>'
+        for o in options:
+            ref_rate = o['vendor_commission_rate'] if o['vendor_commission_rate'] is not None else product_full['vendor_commission_rate']
+            ref_html += f'<div class="field-item"><b>{o["option_name"]}</b><span>{_pct(ref_rate)}</span></div>'
+        ref_html += '</div>'
+        st.markdown(ref_html, unsafe_allow_html=True)
+        st.caption('※ 소싱 등록 시 업체가 제공 가능하다고 밝힌 수수료율입니다. 아래 "벤더 수수료율"을 입력할 때 참고하세요 (이 값을 넘으면 업체와 재협의가 필요할 수 있어요).')
 
     h1, h2, h3 = st.columns(3)
     with h1:
@@ -471,7 +475,7 @@ def render_proposal_calc_page():
     event_details = st.text_area('이벤트 내용', height=70)
     notes = st.text_area('특이사항', height=70)
 
-    if product_full['vendor_commission_rate'] and vendor_commission_rate > product_full['vendor_commission_rate']:
+    if show_gp and product_full['vendor_commission_rate'] and vendor_commission_rate > product_full['vendor_commission_rate']:
         st.warning(f'⚠️ 입력하신 벤더 수수료율({_pct(vendor_commission_rate)})이 업체가 제공 가능하다고 밝힌 수수료율({_pct(product_full["vendor_commission_rate"])})보다 높습니다. 업체와 재협의가 필요할 수 있어요.')
 
     st.markdown('<div class="section-title" style="font-size:1.1rem;">옵션별 계산 결과</div>', unsafe_allow_html=True)
@@ -492,23 +496,30 @@ def render_proposal_calc_page():
         result = calc_option_result(o['groupbuy_price'], o['supply_price'], seller_commission_rate,
                                      vendor_commission_rate, pg_fee_rate, add_cost, qty)
 
-        flow_rows = [
-            ('공구판매가 (고객 결제금액)', o['groupbuy_price'], False),
-            ('(-) 공급가 (우리가 받은 원가)', o['supply_price'], True),
-            ('(-) 셀러 지급액', result['seller_payment'], True),
-            ('(-) 벤더 지급액', result['vendor_payment'], True),
-            ('(-) PG 수수료', result['pg_fee'], True),
-            ('(-) 추가 비용', add_cost, True),
-        ]
-        flow_html = '<div class="card" style="background:#f8fafc;padding:14px 16px;margin-top:8px;">'
-        for label, amt, is_deduction in flow_rows:
-            color = '#dc2626' if is_deduction else '#0f172a'
-            flow_html += f'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13.5px;"><span style="color:#64748b;">{label}</span><span style="color:{color};font-weight:700;">{_money(amt)}</span></div>'
-        flow_html += (f'<div style="display:flex;justify-content:space-between;padding:8px 0 2px;margin-top:6px;border-top:2px solid #cbd5e1;font-size:15px;">'
-                      f'<span style="font-weight:800;color:#0f172a;">= 회사가 남기는 돈 (GP)</span>'
-                      f'<span style="font-weight:900;color:#2563eb;">{_money(result["company_gp"])} ({_pct(result["company_gp_rate"])})</span></div>')
-        flow_html += '</div>'
-        st.markdown(flow_html, unsafe_allow_html=True)
+        if show_gp:
+            flow_rows = [
+                ('공구판매가 (고객 결제금액)', o['groupbuy_price'], False),
+                ('(-) 공급가 (우리가 받은 원가)', o['supply_price'], True),
+                ('(-) 셀러 지급액', result['seller_payment'], True),
+                ('(-) 벤더 지급액', result['vendor_payment'], True),
+                ('(-) PG 수수료', result['pg_fee'], True),
+                ('(-) 추가 비용', add_cost, True),
+            ]
+            flow_html = '<div class="card" style="background:#f8fafc;padding:14px 16px;margin-top:8px;">'
+            for label, amt, is_deduction in flow_rows:
+                color = '#dc2626' if is_deduction else '#0f172a'
+                flow_html += f'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13.5px;"><span style="color:#64748b;">{label}</span><span style="color:{color};font-weight:700;">{_money(amt)}</span></div>'
+            flow_html += (f'<div style="display:flex;justify-content:space-between;padding:8px 0 2px;margin-top:6px;border-top:2px solid #cbd5e1;font-size:15px;">'
+                          f'<span style="font-weight:800;color:#0f172a;">= 회사가 남기는 돈 (GP)</span>'
+                          f'<span style="font-weight:900;color:#2563eb;">{_money(result["company_gp"])} ({_pct(result["company_gp_rate"])})</span></div>')
+            flow_html += '</div>'
+            st.markdown(flow_html, unsafe_allow_html=True)
+        else:
+            simple_html = ('<div class="card" style="background:#f8fafc;padding:14px 16px;margin-top:8px;">'
+                           f'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13.5px;"><span style="color:#64748b;">공구판매가</span><span style="font-weight:700;color:#0f172a;">{_money(o["groupbuy_price"])}</span></div>'
+                           f'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13.5px;"><span style="color:#64748b;">셀러 지급액</span><span style="font-weight:700;color:#0f172a;">{_money(result["seller_payment"])}</span></div>'
+                           '</div>')
+            st.markdown(simple_html, unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -516,11 +527,16 @@ def render_proposal_calc_page():
         calc_results.append({**result, 'option': o, 'expected_quantity': qty, 'discount_rate': dr})
 
     summary = calc_proposal_summary(calc_results)
-    st.markdown('<div class="dark-card"><div style="display:flex;gap:30px;">'
-                f'<div><span>예상 총 매출</span><br><b style="font-size:20px;">{_money(summary["total_expected_sales"])}</b></div>'
-                f'<div><span>예상 총 GP</span><br><b style="font-size:20px;">{_money(summary["total_expected_gp"])}</b></div>'
-                f'<div><span>평균 GP율</span><br><b style="font-size:20px;">{_pct(summary["blended_gp_rate"])}</b></div>'
-                '</div></div>', unsafe_allow_html=True)
+    if show_gp:
+        st.markdown('<div class="dark-card"><div style="display:flex;gap:30px;">'
+                    f'<div><span>예상 총 매출</span><br><b style="font-size:20px;">{_money(summary["total_expected_sales"])}</b></div>'
+                    f'<div><span>예상 총 GP</span><br><b style="font-size:20px;">{_money(summary["total_expected_gp"])}</b></div>'
+                    f'<div><span>평균 GP율</span><br><b style="font-size:20px;">{_pct(summary["blended_gp_rate"])}</b></div>'
+                    '</div></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="dark-card"><div style="display:flex;gap:30px;">'
+                    f'<div><span>예상 총 매출</span><br><b style="font-size:20px;">{_money(summary["total_expected_sales"])}</b></div>'
+                    '</div></div>', unsafe_allow_html=True)
 
     if st.button('💾 제안 임시 저장', type='primary'):
         if not sales_manager:
