@@ -207,12 +207,61 @@ def render_product_manage_page():
     if st.session_state.get('pm_detail_id'):
         detail = repo.get_product(st.session_state['pm_detail_id'])
         if detail:
+            p = detail['product']
             st.markdown('---')
-            st.markdown(f'<div class="section-title" style="font-size:1.1rem;">상세: {detail["product"]["product_name"]}</div>', unsafe_allow_html=True)
-            st.json(detail['product'])
-            st.markdown('**옵션 목록**')
-            for o in detail['options']:
-                st.markdown(f'- {o["option_name"]} / 정상가 {_money(o["retail_price"])} / 공구가 {_money(o["groupbuy_price"])} / 공급가 {_money(o["supply_price"])}')
+            st.markdown(f'<div class="section-title" style="font-size:1.1rem;">상세: {p["product_name"]}</div>', unsafe_allow_html=True)
+
+            def _field(label, value):
+                v = value if (value not in (None, '', 0) or value == 0) else '-'
+                if label.endswith('여부'):
+                    v = '포함' if value else '미포함'
+                return f'<div class="field-item"><b>{label}</b><span>{v}</span></div>'
+
+            basic_fields = [
+                ('업체명', p['vendor_name']), ('브랜드명', p['brand_name']), ('카테고리', p['category']),
+                ('소싱 담당자', p['sourcing_manager']), ('상품 상태', p['product_status']),
+                ('업체 담당자명', p['vendor_contact_name']), ('업체 연락처', p['vendor_contact_phone']), ('업체 이메일', p['vendor_contact_email']),
+                ('이미지 URL', p['image_url']), ('상품 링크', p['product_link']),
+                ('제조일/소비기한', p['expiry_info']), ('공동구매 진행이력', p['groupbuy_history']),
+            ]
+            st.markdown(f'<div class="field-grid">{"".join(_field(l,v) for l,v in basic_fields)}</div>', unsafe_allow_html=True)
+
+            with st.expander('📦 거래 및 배송 조건'):
+                trade_fields = [
+                    ('업체 제안 가능 수수료율', _pct(p['vendor_commission_rate'])), ('부가세 포함 여부', p['vat_included']),
+                    ('기본 배송비', _money(p['base_shipping_fee'])), ('제주 배송비', _money(p['jeju_shipping_fee'])),
+                    ('도서산간 배송비', _money(p['remote_shipping_fee'])), ('무료배송 조건', p['free_shipping_condition']),
+                    ('출고 리드타임', p['shipping_lead_time']), ('정산 조건', p['settlement_terms']),
+                    ('반품/교환 주소', p['return_address']), ('재고 특이사항', p['inventory_notes']),
+                ]
+                st.markdown(f'<div class="field-grid">{"".join(_field(l,v) for l,v in trade_fields)}</div>', unsafe_allow_html=True)
+
+            with st.expander('📝 소구포인트 / 샘플정책 / 특이사항'):
+                note_fields = [
+                    ('소구포인트 및 기타 특이사항', p['appeal_points']),
+                    ('샘플 정책 / 셀러 허들 / 이벤트', p['sample_policy_notes']),
+                    ('특이사항', p['notes']),
+                ]
+                st.markdown(f'<div class="field-grid">{"".join(f"<div class=\'field-item full\'><b>{l}</b><span>{v or chr(45)}</span></div>" for l,v in note_fields)}</div>', unsafe_allow_html=True)
+
+            st.caption(f'등록일 {p["created_at"][:16].replace("T"," ")} · 수정일 {p["updated_at"][:16].replace("T"," ")}')
+
+            st.markdown('<div class="section-title" style="font-size:1rem;">옵션 목록</div>', unsafe_allow_html=True)
+            if detail['options']:
+                opt_rows = ''.join(
+                    f'<tr><td>{o["option_name"]}</td><td>{o.get("composition") or "-"}</td>'
+                    f'<td class="center">{_money(o["retail_price"])}</td><td class="center">{_money(o["groupbuy_price"])}</td>'
+                    f'<td class="center">{_money(o["supply_price"])}</td>'
+                    f'<td class="center">{_pct(calc_discount_rate(o["retail_price"], o["groupbuy_price"]))}</td></tr>'
+                    for o in detail['options']
+                )
+                st.markdown(
+                    '<div class="card" style="padding:0;overflow-x:auto;"><table class="deal-table">'
+                    '<thead><tr><th>옵션명</th><th>구성</th><th>정상가</th><th>공구가</th><th>공급가</th><th>할인율</th></tr></thead>'
+                    f'<tbody>{opt_rows}</tbody></table></div>', unsafe_allow_html=True)
+            else:
+                st.info('등록된 옵션이 없습니다.')
+
             if st.button('상세 닫기'):
                 del st.session_state['pm_detail_id']
                 st.rerun()
