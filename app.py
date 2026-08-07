@@ -927,10 +927,10 @@ def render_deal_list_html(title, items):
     return f'<div class="card"><b>{title}</b><div style="margin-top:6px;">{body}</div></div>'
 
 def render_manager_week_cards_html(all_deals, week_start, week_end):
-    """이번 주 시작하는 공구를 담당자별 카드로 묶어서 표시 (건수 많은 담당자 먼저)."""
-    filtered = [d for d in all_deals if week_start <= d['start'] <= week_end]
+    """이번 주에 걸쳐있는(시작~종료 기간이 이번 주와 겹치는) 공구를 담당자별 카드로 묶어서 표시."""
+    filtered = [d for d in all_deals if d['start'] <= week_end and d['end'] >= week_start]
     if not filtered:
-        return '<div class="card"><span style="color:#94a3b8;">이번 주에 시작하는 공구가 없습니다.</span></div>'
+        return '<div class="card"><span style="color:#94a3b8;">이번 주에 진행 중인 공구가 없습니다.</span></div>'
     by_manager = {}
     for d in filtered:
         by_manager.setdefault(d['manager'], []).append(d)
@@ -1143,7 +1143,7 @@ if page=='🏠 메인 대시보드':
     if all_week_deals is None:
         st.markdown('<div class="card"><b>이번주 공구 현황</b><br><br><span class="chip">공구현황판을 업로드하면 표시됩니다</span></div>',unsafe_allow_html=True)
     else:
-        week_total=len([d for d in all_week_deals if week_start<=d['start']<=week_end])
+        week_total=len([d for d in all_week_deals if d['start']<=week_end and d['end']>=week_start])
         st.markdown(f'<span class="chip">{week_start.month}/{week_start.day}~{week_end.month}/{week_end.day}</span><span class="chip active">총 {week_total}건</span>',unsafe_allow_html=True)
         st.markdown(render_manager_week_cards_html(all_week_deals,week_start,week_end),unsafe_allow_html=True)
 
