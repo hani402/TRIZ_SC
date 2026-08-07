@@ -977,7 +977,7 @@ def parse_board_deals(board_path, year, month):
         deals.append({
             'start': start_d, 'end': end_d or start_d,
             'seller': seller, 'product': product,
-            'manager': str(manager).strip() if manager else '-',
+            'manager': (str(manager).strip() or '-') if manager else '-',
             'status': '취소' if is_cancelled else '확정',
         })
     return deals
@@ -1030,7 +1030,7 @@ def parse_board_deals_all(board_path):
                 'year': year, 'month': month,
                 'start': start_d, 'end': end_d or start_d,
                 'seller': seller, 'product': product,
-                'manager': str(manager).strip() if manager else '-',
+                'manager': (str(manager).strip() or '-') if manager else '-',
                 'status': '취소' if is_cancelled else '확정',
                 'revenue': rev if isinstance(rev, (int, float)) else 0,
                 'gp': gp if isinstance(gp, (int, float)) else 0,
