@@ -452,7 +452,6 @@ SYNCED_FILES = {
     'gonggu_board.xlsx': lambda: BOARD_PATH,
     'gonggu_board_2025_uploaded.xlsx': lambda: ARCHIVE_BOARD_PATH,
     'kpi_source.xlsx': lambda: KPI_SOURCE_PATH,
-    'kpi_targets.csv': lambda: KPI_PATH,
 }
 
 def ensure_synced_from_github():
@@ -649,29 +648,11 @@ def aggregate_by_manager_month(board_data):
             out[(mgr, y, m)] = {'매출': v['매출'], 'GP': v['GP']}
     return out
 
-# 담당자별 매출/GP KPI 목표치 초기값 (담당자님 제공 자료 기준, data/kpi_targets.csv가 없을 때 최초 1회 생성됨)
-DEFAULT_KPI_ROWS = [
-    ('예림',2026,1,144000000,15800000),('예림',2026,2,107000000,24600000),('예림',2026,3,138000000,19900000),
-    ('예림',2026,4,136000000,17850000),('예림',2026,5,89000000,16600000),('예림',2026,6,148000000,20350000),
-    ('예림',2026,7,155000000,21750000),('예림',2026,8,66000000,16400000),('예림',2026,9,140000000,15600000),
-    ('예림',2026,10,138000000,16650000),('예림',2026,11,123000000,24250000),('예림',2026,12,136000000,18100000),
-    ('유정',2026,1,132000000,10290000),('유정',2026,2,185000000,22880000),('유정',2026,3,220000000,21050000),
-    ('유정',2026,4,143000000,22550000),('유정',2026,5,160000000,20400000),('유정',2026,6,115000000,24050000),
-    ('유정',2026,7,222000000,21990000),('유정',2026,8,108000000,14980000),('유정',2026,9,82000000,18540000),
-    ('유정',2026,10,118000000,14450000),('유정',2026,11,160000000,16700000),('유정',2026,12,91000000,19630000),
-    ('명지',2026,1,65300000,14290000),('명지',2026,2,72700000,6810000),('명지',2026,3,160700000,27250000),
-    ('명지',2026,4,65300000,18350000),('명지',2026,5,118400000,17990000),('명지',2026,6,130700000,20720000),
-    ('명지',2026,7,89600000,21110000),('명지',2026,8,102700000,14870000),('명지',2026,9,129400000,22880000),
-    ('명지',2026,10,99100000,24470000),('명지',2026,11,89700000,13170000),('명지',2026,12,128400000,18220000),
-    ('지영',2026,4,30268600,7002550),('지영',2026,5,67295230,7811590),('지영',2026,6,69094170,16489340),
-]
-KPI_PATH = os.path.join(DATA_DIR, 'kpi_targets.csv')
+# KPI 목표치: 코드에 값을 박아넣지 않고, archive_data/kpi_targets.xlsx 파일로 관리합니다.
+# 2025년 공구현황판 아카이브와 동일한 방식 — GitHub에 파일로 커밋해두면 계속 유지되고,
+# 나중에 KPI가 바뀌면 이 파일만 새로 교체(또는 앱에서 업로드)하면 됩니다.
+KPI_BUNDLED_PATH = os.path.join(ARCHIVE_DIR, 'kpi_targets.xlsx')
 KPI_SOURCE_PATH = os.path.join(DATA_DIR, 'kpi_source.xlsx')
-
-def ensure_default_kpi_file():
-    ensure_data_dirs()
-    if not os.path.exists(KPI_PATH):
-        pd.DataFrame(DEFAULT_KPI_ROWS, columns=['담당자','연도','월','매출KPI','GPKPI']).to_csv(KPI_PATH, index=False, encoding='utf-8-sig')
 
 def save_kpi_upload(uploaded_file):
     ensure_data_dirs()
@@ -724,22 +705,14 @@ def parse_kpi_source_file(path):
     return out
 
 def load_kpi_targets():
-    """업로드된 KPI 문서(data/kpi_source.xlsx)가 있으면 그걸 우선 사용하고,
-    없으면 최초 안내드린 기본값(data/kpi_targets.csv)을 사용."""
+    """업로드된 KPI 문서(data/kpi_source.xlsx)가 있으면 그걸 최우선으로 쓰고,
+    없으면 GitHub에 커밋되어있는 기본 KPI 파일(archive_data/kpi_targets.xlsx)을 사용."""
     if os.path.exists(KPI_SOURCE_PATH):
         parsed = parse_kpi_source_file(KPI_SOURCE_PATH)
         if parsed: return parsed
-    ensure_default_kpi_file()
-    df = pd.read_csv(KPI_PATH)
-    out = {}
-    for _, row in df.iterrows():
-        key = (str(row['담당자']).strip(), int(row['연도']), int(row['월']))
-        rev, gp = row.get('매출KPI'), row.get('GPKPI')
-        out[key] = {
-            '매출KPI': None if pd.isna(rev) else float(rev),
-            'GPKPI': None if pd.isna(gp) else float(gp),
-        }
-    return out
+    if os.path.exists(KPI_BUNDLED_PATH):
+        return parse_kpi_source_file(KPI_BUNDLED_PATH)
+    return {}
 
 def render_manager_kpi_full_table_html(board_data, kpi, year, manager_filter, month_filter):
     """담당자/월 필터에 따라 분기별 전체 연간표(또는 단일월표)를 그린다. '전체' 담당자 선택 시 ALL 합계행 포함."""
