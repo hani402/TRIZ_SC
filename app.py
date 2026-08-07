@@ -1048,91 +1048,6 @@ def search_deal_history(all_deals, seller_query, product_query):
     results.sort(key=lambda d: (d['year'], d['month'], d['start']), reverse=True)
     return results
 
-# ── 공구 알람 텍스트 생성 (영업매니저 작성 체크리스트 → 공유용 텍스트) ──────
-WEEKDAY_KR = ['월','화','수','목','금','토','일']
-
-def fmt_date_kr(d):
-    return f'{d.month:02d}/{d.day:02d}({WEEKDAY_KR[d.weekday()]})'
-
-def parse_schedule_from_sheet_name(sheet_name, year):
-    """시트명 앞부분의 'MMDD-MMDD' 또는 'MMDD-DD'(같은 달) 패턴에서 공구 일정을 추출."""
-    m = re.match(r'^(\d{2})(\d{2})-(\d{2})(\d{2})', sheet_name)
-    if m:
-        sm, sd, em, ed = map(int, m.groups())
-        try: return date(year, sm, sd), date(year, em, ed)
-        except ValueError: return None, None
-    m = re.match(r'^(\d{2})(\d{2})-(\d{1,2})\b', sheet_name)
-    if m:
-        sm, sd, ed = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        try: return date(year, sm, sd), date(year, sm, ed)
-        except ValueError: return None, None
-    return None, None
-
-def format_shipping_text(raw):
-    if not raw: return ''
-    raw_lines = [l.strip() for l in str(raw).replace('▶', '-').split('\n') if l.strip()]
-    lines = [re.sub(r'^-(?!\s)', '- ', l) for l in raw_lines]
-    out, prev_bullet = [], None
-    for line in lines:
-        is_bullet = line.startswith('-')
-        if prev_bullet is False and is_bullet:
-            out.append('')
-        out.append(line)
-        prev_bullet = is_bullet
-    return '\n'.join(out)
-
-def format_event_text(raw):
-    if not raw: return ''
-    lines = [l.strip() for l in str(raw).split('\n')]
-    content = [l for l in lines if l and not re.fullmatch(r'\[[^\]]*\]', l)]
-    return '\n'.join(f'{i+1}. {l}' for i, l in enumerate(content)) if content else ''
-
-def find_label_row(ws, keywords, col=2, max_row=30):
-    for r in range(1, max_row + 1):
-        v = ws.cell(row=r, column=col).value
-        if v and all(kw in str(v) for kw in keywords):
-            return r
-    return None
-
-def build_gonggu_alarm_text(ws, year):
-    def val(keywords):
-        r = find_label_row(ws, keywords)
-        return ws.cell(row=r, column=3).value if r else None
-
-    seller = val(['셀러']) or ''
-    product = val(['진행', '상품']) or ''
-    open_text = val(['결제창', '오픈']) or ''
-    close_text = val(['결제창', '마감', '시간']) or ''
-    link = val(['결제창', '링크']) or ''
-    same_day = val(['당일', '발송', '마감']) or ''
-    event_raw = val(['이벤트'])
-
-    header_row, ship_col = None, None
-    for r in range(1, 20):
-        for c in range(1, ws.max_column + 1):
-            if '배송비' in header_key(ws.cell(row=r, column=c).value or ''):
-                header_row, ship_col = r, c; break
-        if header_row: break
-    shipping_raw = ws.cell(row=header_row + 1, column=ship_col).value if header_row else ''
-
-    start_d, end_d = parse_schedule_from_sheet_name(ws.title, year)
-    schedule_line = f'{fmt_date_kr(start_d)}-{fmt_date_kr(end_d)}' if start_d else '(시트명에서 일정을 인식하지 못했습니다 — 직접 확인해주세요)'
-
-    parts = [
-        f'⭐{seller} X {product}⭐', '',
-        f'➡️ 일정: {schedule_line}',
-        f'- 결제창 오픈 : {open_text}',
-        f'- 결제창 마감 : {close_text}', '',
-        '➡️ 배송',
-        format_shipping_text(shipping_raw), '',
-        '➡️ 당일 배송 시간',
-        str(same_day), '',
-        '➡️ 결제창 링크',
-        str(link), '',
-        '➡️ 이벤트',
-        format_event_text(event_raw) or '(없음)',
-    ]
-    return '\n'.join(parts)
 def render_gantt_calendar_html(week_start, week_end, deals):
     """요일 헤더 + 공구별 연속 막대(간트차트 스타일) 캘린더."""
     day_names = ['일', '월', '화', '수', '목', '금', '토']
@@ -1158,7 +1073,7 @@ manager_df['달성률']=(manager_df['매출']/manager_df['KPI']*100).round(1)
 
 ensure_synced_from_github()
 
-NAV_STRUCTURE={'🏠 메인 대시보드':['🏠 대시보드','📅 공구 일정','👩 담당자별 매출','🔍 히스토리 검색'],'⚙️ 자동 프로그램':['💰 매출 집계','🎁 이벤트 추첨','📢 공구 알람']}
+NAV_STRUCTURE={'🏠 메인 대시보드':['🏠 대시보드','📅 공구 일정','👩 담당자별 매출','🔍 히스토리 검색'],'⚙️ 자동 프로그램':['💰 매출 집계','🎁 이벤트 추첨']}
 
 with st.sidebar:
     st.markdown('<div class="sidebar-badge"><div class="dot">📊</div><div class="txt"><b>TRIZ 영업실</b><span>업무 프로그램</span></div></div>',unsafe_allow_html=True)
@@ -1496,24 +1411,3 @@ elif page=='🔍 히스토리 검색':
                 st.dataframe(pd.DataFrame(rows),use_container_width=True,hide_index=True)
         else:
             st.info('셀러명 또는 상품명을 입력하면 히스토리가 표시됩니다.')
-
-elif page=='📢 공구 알람':
-    st.markdown('<div class="section-title">📢 공구 알람 생성</div>',unsafe_allow_html=True)
-    st.markdown('<div class="help">영업매니저가 작성한 "공동구매 진행 전 체크리스트" 엑셀을 업로드하면 공유용 공구 알람 텍스트를 자동으로 만들어드립니다.</div>',unsafe_allow_html=True)
-
-    alarm_file=st.file_uploader('체크리스트 엑셀 업로드 (.xlsx)',type=['xlsx'],key='alarm_upload')
-    alarm_year=date.today().year
-
-    if alarm_file is not None:
-        try:
-            wb=openpyxl.load_workbook(alarm_file,data_only=True)
-        except Exception as e:
-            wb=None
-            st.error(f'파일을 읽는 중 문제가 발생했습니다: {e}')
-        if wb is not None:
-            sheet_name=st.selectbox('상품(시트) 선택',wb.sheetnames) if len(wb.sheetnames)>1 else wb.sheetnames[0]
-            ws=wb[sheet_name]
-            alarm_text=build_gonggu_alarm_text(ws,alarm_year)
-            st.text_area('📋 공구 알람 (전체 선택해서 복사하세요)',value=alarm_text,height=440)
-            st.download_button('📥 텍스트 파일로 다운로드',data=alarm_text.encode('utf-8'),file_name=f'공구알람_{sheet_name}.txt',mime='text/plain')
-            st.caption('※ "일정" 날짜는 시트 이름(예: "0713-15 ...")에서 자동으로 인식하며, 연도는 현재 연도로 자동 적용됩니다. 예전 공구의 경우 요일이 다르게 나올 수 있어요.')
