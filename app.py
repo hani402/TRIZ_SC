@@ -1073,43 +1073,23 @@ manager_df['달성률']=(manager_df['매출']/manager_df['KPI']*100).round(1)
 
 ensure_synced_from_github()
 
-NAV_STRUCTURE={'🏠 메인 대시보드':['🏠 대시보드','📅 공구 일정','👩 담당자별 매출','🔍 히스토리 검색'],'⚙️ 자동 프로그램':['💰 매출 집계','🎁 이벤트 추첨']}
+NAV_ITEMS=['🏠 메인 대시보드','📅 공구 일정','👩 담당자별 매출','🔍 히스토리 검색','💰 매출 집계','🎁 이벤트 추첨']
 
 with st.sidebar:
     st.markdown('<div class="sidebar-badge"><div class="dot">📊</div><div class="txt"><b>TRIZ 영업실</b><span>업무 프로그램</span></div></div>',unsafe_allow_html=True)
 
-    st.session_state.setdefault('nav_major','🏠 메인 대시보드')
-    maj_cols=st.columns(2)
-    for i,maj in enumerate(NAV_STRUCTURE.keys()):
-        with maj_cols[i]:
-            is_active=st.session_state['nav_major']==maj
-            if st.button(maj,key=f'majbtn_{maj}',use_container_width=True,type='primary' if is_active else 'secondary'):
-                if not is_active:
-                    st.session_state['nav_major']=maj
-                    st.session_state['nav_minor']=NAV_STRUCTURE[maj][0]
-                    st.rerun()
-
-    major=st.session_state['nav_major']
-    minor_options=NAV_STRUCTURE[major]
-    st.session_state.setdefault('nav_minor',minor_options[0])
-    if st.session_state['nav_minor'] not in minor_options:
-        st.session_state['nav_minor']=minor_options[0]
-
-    st.markdown(f'<div class="nav-group">{major.split(" ",1)[1]}</div>',unsafe_allow_html=True)
-    for opt in minor_options:
-        is_active=st.session_state['nav_minor']==opt
-        if st.button(opt,key=f'minbtn_{opt}',use_container_width=True,type='primary' if is_active else 'secondary'):
-            st.session_state['nav_minor']=opt
+    st.session_state.setdefault('nav_page',NAV_ITEMS[0])
+    for opt in NAV_ITEMS:
+        is_active=st.session_state['nav_page']==opt
+        if st.button(opt,key=f'navbtn_{opt}',use_container_width=True,type='primary' if is_active else 'secondary'):
+            st.session_state['nav_page']=opt
             st.rerun()
 
-    page=st.session_state['nav_minor']
-    if page=='🏠 대시보드': page='🏠 메인 대시보드'
+    page=st.session_state['nav_page']
 
     st.markdown('---')
     st.caption('※ 내부 공유용 프로그램입니다.')
 
-_breadcrumb_sub='대시보드' if page=='🏠 메인 대시보드' else page.split(' ',1)[1]
-st.markdown(f'<div class="breadcrumb">{major.split(" ",1)[1]} <span style="color:#cbd5e1;">›</span> <b>{_breadcrumb_sub}</b></div>',unsafe_allow_html=True)
 st.markdown('<div class="main-title">TRIZ 영업실 업무 프로그램</div>',unsafe_allow_html=True)
 st.markdown('<div class="subtle">영업실 루틴 업무를 자동화하는 내부 공유용 프로그램입니다.</div>',unsafe_allow_html=True)
 
