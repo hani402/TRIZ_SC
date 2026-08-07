@@ -1078,6 +1078,25 @@ NAV_ITEMS=['🏠 메인 대시보드','📅 공구 일정','👩 담당자별 �
 with st.sidebar:
     st.markdown('<div class="sidebar-badge"><div class="dot">📊</div><div class="txt"><b>TRIZ 영업실</b><span>업무 프로그램</span></div></div>',unsafe_allow_html=True)
 
+    with st.expander('📁 공구현황판 업로드',expanded=not os.path.exists(BOARD_PATH)):
+        st.caption('26년 공구현황판 시트만 업로드 가능합니다. (다른 문서는 업로드 x)')
+        board_up=st.file_uploader('공구현황판 업로드',type=['xlsx'],key='board_upload',label_visibility='collapsed')
+        if board_up is not None:
+            gh_ok=save_board_upload(board_up)
+            if gh_ok is True:
+                st.success('저장 완료 (GitHub에도 저장되어 재배포/재시작 후에도 유지됩니다)')
+            elif gh_ok is False:
+                st.warning('로컬에는 저장했지만 GitHub 저장에 실패했습니다. 앱이 재시작되면 사라질 수 있어요.')
+            else:
+                st.success('저장 완료')
+                st.caption('※ GitHub 연동이 설정되지 않아 이 세션에서만 유지됩니다.')
+        if os.path.exists(BOARD_PATH):
+            updated_dt=datetime.fromtimestamp(os.path.getmtime(BOARD_PATH),tz=ZoneInfo('Asia/Seoul'))
+            gh_chip='<span class="chip active">🔗 GitHub</span>' if github_configured() else '<span class="chip">⚠️ 미연동</span>'
+            st.markdown(f'<span class="chip active">📌 파일 있음</span><span class="chip">🕒 {updated_dt.strftime("%m-%d %H:%M")}</span>{gh_chip}',unsafe_allow_html=True)
+        else:
+            st.markdown('<span class="chip">파일 없음</span>',unsafe_allow_html=True)
+
     st.session_state.setdefault('nav_page',NAV_ITEMS[0])
     for opt in NAV_ITEMS:
         is_active=st.session_state['nav_page']==opt
@@ -1096,24 +1115,6 @@ st.markdown('<div class="subtle">영업실 루틴 업무를 자동화하는 내�
 if page=='🏠 메인 대시보드':
     st.markdown('<div class="section-title">🏠 메인 대시보드</div>',unsafe_allow_html=True)
     st.markdown('<div class="help">26년 공구현황판 시트만 업로드 가능합니다. (다른 문서는 업로드 x)</div>',unsafe_allow_html=True)
-
-    with st.expander('📁 공구현황판 업로드',expanded=not os.path.exists(BOARD_PATH)):
-        board_up=st.file_uploader('공구현황판 업로드 (여러 월 시트가 포함된 워크북 1개)',type=['xlsx'],key='board_upload')
-        if board_up is not None:
-            gh_ok=save_board_upload(board_up)
-            if gh_ok is True:
-                st.success('공구현황판 저장 완료 (GitHub에도 저장되어 재배포/재시작 후에도 유지됩니다)')
-            elif gh_ok is False:
-                st.warning('로컬에는 저장했지만 GitHub 저장에 실패했습니다. 앱이 재시작되면 사라질 수 있어요. GitHub 연동 설정을 확인해주세요.')
-            else:
-                st.success('공구현황판 저장 완료')
-                st.caption('※ GitHub 연동이 설정되지 않아 이 세션에서만 유지됩니다. 재시작 후에도 유지하려면 GitHub 연동을 설정해주세요.')
-        if os.path.exists(BOARD_PATH):
-            updated_dt=datetime.fromtimestamp(os.path.getmtime(BOARD_PATH),tz=ZoneInfo('Asia/Seoul'))
-            gh_chip='<span class="chip active">🔗 GitHub 연동됨</span>' if github_configured() else '<span class="chip">⚠️ GitHub 미연동</span>'
-            st.markdown(f'<span class="chip active">📌 현재 저장된 파일 있음</span><span class="chip">🕒 마지막 업데이트 : {updated_dt.strftime("%Y-%m-%d %H:%M")}</span>{gh_chip}',unsafe_allow_html=True)
-        else:
-            st.markdown('<span class="chip">아직 저장된 파일이 없습니다</span>',unsafe_allow_html=True)
 
     board_data_all=load_all_dashboard_data()[0]
     board_data=filter_up_to_current_month(board_data_all)
