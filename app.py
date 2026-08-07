@@ -714,10 +714,13 @@ def load_kpi_targets():
         return parse_kpi_source_file(KPI_BUNDLED_PATH)
     return {}
 
+DEPT_LABEL = '부서 총합'
+FIXED_MANAGER_ORDER = ['예림', '유정', '명지', '지영', '하늬/봉석']
+
 def render_manager_kpi_full_table_html(board_data, kpi, year, manager_filter, month_filter):
-    """담당자/월 필터에 따라 분기별 전체 연간표(또는 단일월표)를 그린다. '전체' 담당자 선택 시 ALL 합계행 포함."""
+    """담당자/월 필터에 따라 분기별 전체 연간표(또는 단일월표)를 그린다.
+    '전체' 선택 시 맨 위 '부서 총합'(고정, KPI 파일에 별도로 입력된 부서 목표치 기준) + 예림/유정/명지/지영/하늬봉석 순으로 표시."""
     actuals = aggregate_by_manager_month(board_data)
-    all_managers = sorted(set([k[0] for k in kpi] + [mgr for (y, m), d in board_data.items() for mgr in d['by_manager']]))
 
     show_all_months = (month_filter == '전체')
     months = list(range(1, 13)) if show_all_months else [int(month_filter.replace('월', ''))]
@@ -732,7 +735,6 @@ def render_manager_kpi_full_table_html(board_data, kpi, year, manager_filter, mo
     def kpi_lookup(mgrs, mm):
         rev = sum((kpi.get((m, year, mm), {}).get('매출KPI') or 0) for m in mgrs) or None
         gp = sum((kpi.get((m, year, mm), {}).get('GPKPI') or 0) for m in mgrs) or None
-        # 목표치가 하나도 없으면(전부 미설정) None 유지, 하나라도 있으면 합산치 사용
         has_rev = any(kpi.get((m, year, mm), {}).get('매출KPI') for m in mgrs)
         has_gp = any(kpi.get((m, year, mm), {}).get('GPKPI') for m in mgrs)
         return (rev if has_rev else None), (gp if has_gp else None)
@@ -740,6 +742,14 @@ def render_manager_kpi_full_table_html(board_data, kpi, year, manager_filter, mo
     def actual_lookup(mgrs, mm):
         rev = sum(actuals.get((m, year, mm), {}).get('매출', 0) for m in mgrs)
         gp = sum(actuals.get((m, year, mm), {}).get('GP', 0) for m in mgrs)
+        return rev, gp
+
+    def dept_actual_lookup(mm):
+        """부서 총합 실적: 담당자 지정 여부와 무관하게 그 달의 공구현황판 by_manager 전체 합산 (공란 포함)."""
+        d = board_data.get((year, mm))
+        if not d: return 0, 0
+        rev = sum(v['매출'] for v in d['by_manager'].values())
+        gp = sum(v['GP'] for v in d['by_manager'].values())
         return rev, gp
 
     n_month_cols = len(months)
@@ -763,18 +773,18 @@ def render_manager_kpi_full_table_html(board_data, kpi, year, manager_filter, mo
         html += f'<div class="dg-th" style="grid-column:4;grid-row:1;">{months[0]}월</div>'
         data_start_row = 2
 
-    def build_block(label, mgrs, start_row):
-        rev_kpi_year = sum((kpi.get((m, year, mm), {}).get('매출KPI') or 0) for m in mgrs for mm in range(1, 13)) or None
-        gp_kpi_year = sum((kpi.get((m, year, mm), {}).get('GPKPI') or 0) for m in mgrs for mm in range(1, 13)) or None
-        rev_actual_year = sum(actuals.get((m, year, mm), {}).get('매출', 0) for m in mgrs for mm in range(1, 13))
-        gp_actual_year = sum(actuals.get((m, year, mm), {}).get('GP', 0) for m in mgrs for mm in range(1, 13))
+    def build_block(label, start_row, kpi_fn, actual_fn):
+        rev_kpi_year = sum((kpi_fn(mm)[0] or 0) for mm in range(1, 13)) or None
+        gp_kpi_year = sum((kpi_fn(mm)[1] or 0) for mm in range(1, 13)) or None
+        rev_actual_year = sum(actual_fn(mm)[0] for mm in range(1, 13))
+        gp_actual_year = sum(actual_fn(mm)[1] for mm in range(1, 13))
         row_defs = [
-            ('매출 KPI', lambda mm: fmt_amt(kpi_lookup(mgrs, mm)[0]), fmt_amt(rev_kpi_year)),
-            ('GP KPI', lambda mm: fmt_amt(kpi_lookup(mgrs, mm)[1]), fmt_amt(gp_kpi_year)),
-            ('매출 결과', lambda mm: money(actual_lookup(mgrs, mm)[0]), money(rev_actual_year)),
-            ('GP 결과', lambda mm: money(actual_lookup(mgrs, mm)[1]), money(gp_actual_year)),
-            ('매출 달성률(%)', lambda mm: fmt_pct(actual_lookup(mgrs, mm)[0], kpi_lookup(mgrs, mm)[0]), fmt_pct(rev_actual_year, rev_kpi_year)),
-            ('GP 달성률(%)', lambda mm: fmt_pct(actual_lookup(mgrs, mm)[1], kpi_lookup(mgrs, mm)[1]), fmt_pct(gp_actual_year, gp_kpi_year)),
+            ('매출 KPI', lambda mm: fmt_amt(kpi_fn(mm)[0]), fmt_amt(rev_kpi_year)),
+            ('GP KPI', lambda mm: fmt_amt(kpi_fn(mm)[1]), fmt_amt(gp_kpi_year)),
+            ('매출 결과', lambda mm: money(actual_fn(mm)[0]), money(rev_actual_year)),
+            ('GP 결과', lambda mm: money(actual_fn(mm)[1]), money(gp_actual_year)),
+            ('매출 달성률(%)', lambda mm: fmt_pct(actual_fn(mm)[0], kpi_fn(mm)[0]), fmt_pct(rev_actual_year, rev_kpi_year)),
+            ('GP 달성률(%)', lambda mm: fmt_pct(actual_fn(mm)[1], kpi_fn(mm)[1]), fmt_pct(gp_actual_year, gp_kpi_year)),
         ]
         block_html = f'<div class="dg-group" style="grid-column:1;grid-row:{start_row} / {start_row+6};">{label}</div>'
         for i, (rlabel, monthfn, yearval) in enumerate(row_defs):
@@ -787,13 +797,13 @@ def render_manager_kpi_full_table_html(board_data, kpi, year, manager_filter, mo
 
     r = data_start_row
     if manager_filter == '전체':
-        block_html, r = build_block('ALL', all_managers, r)
+        block_html, r = build_block(DEPT_LABEL, r, lambda mm: kpi_lookup([DEPT_LABEL], mm), dept_actual_lookup)
         html += block_html
-        for mgr in all_managers:
-            block_html, r = build_block(mgr, [mgr], r)
+        for mgr in FIXED_MANAGER_ORDER:
+            block_html, r = build_block(mgr, r, lambda mm, m=mgr: kpi_lookup([m], mm), lambda mm, m=mgr: actual_lookup([m], mm))
             html += block_html
     else:
-        block_html, r = build_block(manager_filter, [manager_filter], r)
+        block_html, r = build_block(manager_filter, r, lambda mm: kpi_lookup([manager_filter], mm), lambda mm: actual_lookup([manager_filter], mm))
         html += block_html
 
     html += '</div></div>'
@@ -1316,7 +1326,7 @@ elif page=='👩 담당자별 매출':
                     st.success('KPI 문서 저장 완료 (GitHub 미연동 — 이 세션에서만 유지됩니다)')
         kpi=load_kpi_targets()
         kpi_year=max({y for (y,m) in board_data} | {y for (_,y,m) in kpi}) if (board_data or kpi) else date.today().year
-        kpi_managers=sorted(set([k[0] for k in kpi] + [mgr for (y,m),d in board_data.items() for mgr in d['by_manager']]))
+        kpi_managers=FIXED_MANAGER_ORDER
         kf1,kf2=st.columns(2)
         with kf1: kpi_manager_sel=st.selectbox('담당자 보기',['전체']+kpi_managers,key='kpi_manager_sel')
         with kf2: kpi_month_sel=st.selectbox('월 보기',['전체']+[f'{m}월' for m in range(1,13)],key='kpi_month_sel')
